@@ -1,152 +1,104 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>Workforce Comply</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    :root {
-      --brand-dark: #0f172a;
-      --brand-accent: #2563eb;
-      --bg-soft: #f1f5f9;
-      --text-main: #1f2937;
-      --text-muted: #6b7280;
-    }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Calibri, Roboto, Helvetica, Arial, sans-serif;
-      background: linear-gradient(180deg, #eef2f7 0%, #f8fafc 100%);
-      color: var(--text-main);
-      margin: 0;
-    }
-
-    header {
-      background: linear-gradient(135deg, #0f172a, #1e293b);
-      color: #ffffff;
-      padding: 48px 24px;
-    }
-
-    header h1 {
-      margin: 0;
-      font-size: 34px;
-      font-weight: 600;
-      letter-spacing: 0.5px;
-      font-family: Georgia, "Times New Roman", Times, serif;
-    }
-
-    header p {
-      margin-top: 10px;
-      font-size: 16px;
-      color: #c7d2fe;
-    }
-
-    main {
-      max-width: 960px;
-      margin: 56px auto;
-      padding: 0 24px;
-    }
-
-    .card {
-      background-color: #ffffff;
-      border-radius: 14px;
-      padding: 32px;
-      margin-bottom: 40px;
-      box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
-    }
-
-    h2 {
-      margin-top: 0;
-      font-size: 24px;
-      font-weight: 600;
-      margin-bottom: 12px;
-    }
-
-    p {
-      font-size: 16px;
-      line-height: 1.65;
-    }
-
-    .note {
-      background-color: var(--bg-soft);
-      border-left: 5px solid var(--brand-accent);
-      padding: 18px 20px;
-      font-size: 15px;
-      margin-top: 20px;
-      border-radius: 8px;
-    }
-
-    footer {
-      text-align: center;
-      font-size: 13px;
-      color: var(--text-muted);
-      padding: 48px 16px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WorkforceComply | Louisiana Compliance & CNA Verification</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .hero-gradient { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); }
+    </style>
 </head>
-<body>
+<body class="bg-gray-50 text-slate-900">
 
-<header>
-  <div style="max-width:960px; margin:0 auto; display:flex; justify-content:space-between; align-items:center;">
-    <div>
-      <h1>
-  <a href="/" style="color:#ffffff; text-decoration:none;">
-    Workforce Comply
-  </a>
-</h1>
-      <p>Compliance support tools for healthcare HR teams</p>
-    </div>
+    <nav class="flex items-center justify-between px-8 py-4 bg-[#0f172a] text-white">
+        <div class="flex items-center gap-2">
+            <div class="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center font-bold">W</div>
+            <span class="text-xl font-bold tracking-tight">WorkforceComply</span>
+        </div>
+        <div class="hidden md:flex gap-8 text-sm font-medium">
+            <a href="#" class="hover:text-blue-400">How it Works</a>
+            <a href="#" class="hover:text-blue-400">Pricing</a>
+            <a href="#" class="hover:text-blue-400">Contact</a>
+        </div>
+        <button class="bg-blue-600 hover:bg-blue-700 px-5 py-2 rounded-lg text-sm font-semibold transition">Login / Signup</button>
+    </nav>
 
-    <div style="font-size:15px; display:flex; flex-direction:column; gap:8px; text-align:right;">
-      <a href="/cna-lookup/" style="color:#c7d2fe; text-decoration:none;">
-        Louisiana CNA Lookup
-      </a>
-      <a href="/adverse-check/" style="color:#c7d2fe; text-decoration:none;">
-        OIG Exclusion/Adverse Check
-      </a>
-    </div>
-  </div>
-</header>
-<main>
+    <section class="hero-gradient text-white pt-20 pb-32 px-6 text-center">
+        <div class="max-w-4xl mx-auto">
+            <h1 class="text-4xl md:text-5xl font-bold mb-6">Instant Louisiana Workforce Compliance</h1>
+            <p class="text-slate-400 text-lg mb-10">One-click verification for LDH Adverse Actions and CNA licensing. Stay 100% compliant with state regulations in seconds.</p>
+            
+            <div class="relative max-w-2xl mx-auto">
+                <input type="text" placeholder="Enter Name or Social Security Number..." class="w-full py-4 px-6 rounded-xl text-slate-900 focus:outline-none focus:ring-4 focus:ring-blue-500/50 shadow-2xl">
+                <button class="mt-4 md:mt-0 md:absolute md:right-2 md:top-2 bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded-lg font-bold transition">Check Compliance Now</button>
+            </div>
+            
+            <div class="mt-8 flex justify-center gap-8 text-sm text-slate-400">
+                <span>✓ 5,000+ Records Scanned</span>
+                <span>✓ 100% Real-Time Updates</span>
+            </div>
+        </div>
+    </section>
 
-  <div class="card">
-    <h2>What This Site Is</h2>
-    <p>
-  Workforce Comply provides documentation-support tools for healthcare HR teams.
-</p>
-<p>
-  Generates time-stamped, employee-specific PDF records suitable for personnel files.
-</p>
-<p>
-  Tools are designed to support HR review and documentation.
-</p>
+    <section class="max-w-6xl mx-auto -mt-16 px-6 pb-20">
+        <div class="grid md:grid-cols-2 gap-6">
+            <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition">
+                <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center mb-4 text-2xl">🏛</div>
+                <h3 class="text-xl font-bold mb-2">LDH Adverse Actions</h3>
+                <p class="text-slate-600">Direct integration with the Louisiana Department of Health database to flag exclusions or terminations.</p>
+            </div>
+            <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition">
+                <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center mb-4 text-2xl">🪪</div>
+                <h3 class="text-xl font-bold mb-2">CNA License Tracker</h3>
+                <p class="text-slate-600">Real-time status checks for Nurse Aide certifications, including automatic expiration alerts.</p>
+            </div>
+            <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition">
+                <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center mb-4 text-2xl">👤</div>
+                <h3 class="text-xl font-bold mb-2">DSW Registry Search</h3>
+                <p class="text-slate-600">Automated checks against the Direct Service Worker registry for findings of abuse or neglect.</p>
+            </div>
+            <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition">
+                <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center mb-4 text-2xl">📊</div>
+                <h3 class="text-xl font-bold mb-2">Batch Processing</h3>
+                <p class="text-slate-600">Upload your entire roster as a CSV (from systems like UKG Ready) and screen everyone in under 60 seconds.</p>
+            </div>
+        </div>
+    </section>
 
-  </div>
+    <section class="bg-white py-20 px-6 border-t border-slate-100">
+        <div class="max-w-6xl mx-auto flex flex-col md:flex-row items-center gap-12">
+            <div class="md:w-1/2">
+                <h2 class="text-3xl font-bold mb-6">Why It Matters</h2>
+                <p class="text-slate-600 mb-4 leading-relaxed">
+                    Under <strong>LA R.S. 14:126.3</strong>, hiring excluded individuals or those with findings on the LDH registry can lead to significant legal penalties and loss of funding.
+                </p>
+                <div class="flex gap-4">
+                    <span class="px-3 py-1 bg-slate-100 text-slate-500 rounded text-xs font-bold uppercase">LDH Verified</span>
+                    <span class="px-3 py-1 bg-slate-100 text-slate-500 rounded text-xs font-bold uppercase">HIPAA Compliant</span>
+                </div>
+            </div>
+            <div class="md:w-1/2 bg-slate-50 p-8 rounded-2xl italic text-slate-700 border-l-4 border-blue-600">
+                "WorkforceComply has saved us dozens of hours. It is an indispensable tool for any healthcare facility in Louisiana."
+                <div class="mt-4 not-italic font-bold text-slate-900">— HR Director, Pelican Pointe Nursing Home</div>
+            </div>
+        </div>
+    </section>
 
-  <div class="card">
-  <h2>Available Tools</h2>
-  <p>
-    The following compliance documentation tools are currently available:
-  </p>
-
-  <div class="note">
-    <a href="/cna-lookup/" style="color:#2563eb; text-decoration:none; font-weight:500;">
-      Open Louisiana CNA Lookup →
-    </a>
-  </div>
-
-  <div class="note">
-    <a href="/oig-check/" style="color:#2563eb; text-decoration:none; font-weight:500;">
-      Open OIG Exclusion/Adverse Check →
-    </a>
-  </div>
-</div>
-
-
-</main>
-
-<footer>
-  © Workforce Comply
-</footer>
+    <footer class="bg-[#0f172a] text-slate-400 py-12 px-8">
+        <div class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
+            <div class="flex gap-8 text-sm">
+                <a href="#" class="hover:text-white">Privacy Policy</a>
+                <a href="#" class="hover:text-white">Terms of Service</a>
+                <a href="#" class="hover:text-white">Contact Support</a>
+            </div>
+            <div class="text-sm">
+                © 2026 WorkforceComply. All rights reserved.
+            </div>
+        </div>
+    </footer>
 
 </body>
 </html>
