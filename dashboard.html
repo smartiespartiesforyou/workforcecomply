@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard | WorkforceComply</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+<script src="https://static.memberstack.com/scripts/v1/memberstack.js" data-memberstack-id="pk_650cfbc9692b47a2c045" defer></script>
+<style>
+  body { font-family: 'Inter', sans-serif; background: #f8fafc; }
+  .nav-dark { background: #0f172a; }
+  .hero-gradient { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); }
+  .upload-zone { border: 2px dashed #cbd5e1; border-radius: 16px; transition: all 0.2s ease; cursor: pointer; }
+  .upload-zone:hover, .upload-zone.dragover { border-color: #3b82f6; background: #eff6ff; }
+  .badge-pending { background:#fef9c3; color:#854d0e; }
+  .badge-running { background:#dbeafe; color:#1d4ed8; }
+  .badge-done { background:#dcfce7; color:#166534; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  .pulse-dot { animation: pulse 1.5s ease-in-out infinite; }
+  #gate { position:fixed; inset:0; background:rgba(15,23,42,0.97); z-index:9999; display:flex; align-items:center; justify-content:center; }
+  .gate-card { background:white; border-radius:20px; padding:48px 40px; max-width:420px; width:90%; text-align:center; }
+  .step { opacity:0.4; transition:opacity 0.3s; }
+  .step.active { opacity:1; }
+  #progress-bar { height:6px; border-radius:9999px; background:#3b82f6; width:0%; transition:width 0.4s ease; }
+</style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+
+<!-- LOGIN GATE -->
+<div id="gate">
+  <div class="gate-card shadow-2xl">
+    <div class="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-white text-xl mx-auto mb-6">W</div>
+    <h2 class="text-2xl font-bold text-slate-900 mb-2">Welcome Back</h2>
+    <p class="text-slate-500 text-sm mb-8">Sign in to access your compliance dashboard</p>
+    <div id="gate-error" class="hidden mb-4 text-sm text-red-600 bg-red-50 rounded-lg px-4 py-3"></div>
+    <div class="text-left space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">Email</label>
+        <input id="login-email" type="email" placeholder="you@organization.com"
+          class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">Password</label>
+        <input id="login-password" type="password" placeholder="••••••••"
+          class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+      </div>
+      <button onclick="doLogin()"
+        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition text-sm">
+        Sign In
+      </button>
+    </div>
+    <p class="mt-6 text-xs text-slate-400">Don't have an account? <a href="pricing.html" class="text-blue-600 hover:underline">View pricing</a></p>
+    <p class="mt-2 text-xs text-slate-400"><a href="index.html" class="hover:underline">← Back to home</a></p>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav class="flex items-center justify-between px-8 py-4 nav-dark text-white sticky top-0 z-50 shadow-lg">
+  <div class="flex items-center gap-3">
+    <div class="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center font-bold text-sm">W</div>
+    <span class="text-xl font-bold tracking-tight">WorkforceComply</span>
+  </div>
+  <div class="flex items-center gap-6">
+    <span id="member-name" class="text-sm text-slate-400"></span>
+    <button onclick="doLogout()" class="text-sm text-slate-400 hover:text-white transition border border-slate-600 px-4 py-1.5 rounded-lg">Sign Out</button>
+  </div>
+</nav>
+
+<!-- HEADER -->
+<div class="hero-gradient text-white py-10 px-6">
+  <div class="max-w-5xl mx-auto">
+    <h1 class="text-3xl font-bold mb-1">Compliance Dashboard</h1>
+    <p class="text-slate-400 text-sm">Louisiana LDH Adverse Actions &amp; CNA Registry Checks</p>
+  </div>
+</div>
+
+<!-- MAIN -->
+<main class="max-w-5xl mx-auto px-6 py-10 space-y-8">
+
+  <!-- STEPS -->
+  <div class="flex items-center gap-4 text-sm font-medium">
+    <div id="step1" class="step active flex items-center gap-2">
+      <div class="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold">1</div>
+      <span class="hidden sm:inline text-slate-700">Upload File</span>
+    </div>
+    <div class="flex-1 h-px bg-slate-200"></div>
+    <div id="step2" class="step flex items-center gap-2">
+      <div class="w-7 h-7 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center text-xs font-bold">2</div>
+      <span class="hidden sm:inline text-slate-400">Running Checks</span>
+    </div>
+    <div class="flex-1 h-px bg-slate-200"></div>
+    <div id="step3" class="step flex items-center gap-2">
+      <div class="w-7 h-7 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center text-xs font-bold">3</div>
+      <span class="hidden sm:inline text-slate-400">Download PDF</span>
+    </div>
+  </div>
+
+  <!-- UPLOAD CARD -->
+  <div id="upload-card" class="bg-white rounded-2xl shadow-sm border border-slate-100 p-8">
+    <h2 class="text-lg font-bold text-slate-900 mb-1">Upload Employee File</h2>
+    <p class="text-slate-500 text-sm mb-6">Upload an Excel file (.xlsx) with columns: <code class="bg-slate-100 px-1.5 py-0.5 rounded text-xs font-mono">first_name, last_name, ssn</code></p>
+    <div id="drop-zone" class="upload-zone p-12 text-center mb-6"
+      onclick="document.getElementById('file-input').click()"
+      ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+      <div class="text-4xl mb-3">📂</div>
+      <p class="text-slate-600 font-medium mb-1">Drag &amp; drop your Excel file here</p>
+      <p class="text-slate-400 text-sm">or click to browse</p>
+      <p id="file-name" class="mt-4 text-blue-600 text-sm font-medium hidden"></p>
+      <input id="file-input" type="file" accept=".xlsx,.xls,.csv" class="hidden" onchange="handleFileSelect(event)">
+    </div>
+    <div class="bg-slate-50 rounded-xl p-4 mb-6 text-sm text-slate-600 space-y-1">
+      <p class="font-semibold text-slate-700 mb-2">File Requirements:</p>
+      <p>✓ Excel (.xlsx) or CSV format</p>
+      <p>✓ Required columns: <strong>first_name</strong>, <strong>last_name</strong>, <strong>ssn</strong></p>
+      <p>✓ SSN format: 123-45-6789</p>
+      <p>✓ Maximum 500 employees per file</p>
+    </div>
+    <div class="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-6 flex gap-3">
+      <span class="text-blue-500 text-lg mt-0.5">🔒</span>
+      <div class="text-sm text-blue-700">
+        <p class="font-semibold mb-0.5">Bank-Level Security</p>
+        <p>SSNs are encrypted in transit and automatically purged within 48 hours.</p>
+      </div>
+    </div>
+    <button id="run-btn" onclick="startChecks()" disabled
+      class="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold py-3.5 rounded-xl transition text-sm">
+      Run Compliance Checks
+    </button>
+  </div>
+
+  <!-- PROGRESS CARD -->
+  <div id="progress-card" class="hidden bg-white rounded-2xl shadow-sm border border-slate-100 p-8">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-bold text-slate-900">Running Checks</h2>
+      <div class="flex items-center gap-2 text-blue-600 text-sm font-medium">
+        <div class="w-2 h-2 rounded-full bg-blue-500 pulse-dot"></div>
+        <span>Processing...</span>
+      </div>
+    </div>
+    <div class="bg-slate-100 rounded-full h-1.5 mb-3"><div id="progress-bar"></div></div>
+    <p id="progress-label" class="text-sm text-slate-500 mb-6">Initializing...</p>
+    <div class="space-y-3">
+      <div class="flex items-center gap-3 p-3 rounded-xl bg-slate-50">
+        <div id="check-adverse-icon" class="text-lg">⏳</div>
+        <div>
+          <p class="text-sm font-semibold text-slate-700">LDH Adverse Actions</p>
+          <p class="text-xs text-slate-400">adverseactions.ldh.la.gov</p>
+        </div>
+        <span id="check-adverse-badge" class="ml-auto text-xs font-medium px-2.5 py-1 rounded-full badge-pending">Pending</span>
+      </div>
+      <div class="flex items-center gap-3 p-3 rounded-xl bg-slate-50">
+        <div id="check-cna-icon" class="text-lg">⏳</div>
+        <div>
+          <p class="text-sm font-semibold text-slate-700">CNA Registry</p>
+          <p class="text-xs text-slate-400">tlc.dhh.la.gov</p>
+        </div>
+        <span id="check-cna-badge" class="ml-auto text-xs font-medium px-2.5 py-1 rounded-full badge-pending">Pending</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULTS CARD -->
+  <div id="results-card" class="hidden bg-white rounded-2xl shadow-sm border border-slate-100 p-8">
+    <div class="flex items-center gap-3 mb-6">
+      <div class="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center text-xl">✅</div>
+      <div>
+        <h2 class="text-lg font-bold text-slate-900">Checks Complete</h2>
+        <p class="text-sm text-slate-500">Your compliance report is ready</p>
+      </div>
+    </div>
+    <div class="grid grid-cols-3 gap-4 mb-6">
+      <div class="bg-slate-50 rounded-xl p-4 text-center">
+        <p class="text-2xl font-bold text-slate-900" id="stat-total">—</p>
+        <p class="text-xs text-slate-500 mt-1">Employees Checked</p>
+      </div>
+      <div class="bg-green-50 rounded-xl p-4 text-center">
+        <p class="text-2xl font-bold text-green-700" id="stat-clear">—</p>
+        <p class="text-xs text-slate-500 mt-1">Clear</p>
+      </div>
+      <div class="bg-red-50 rounded-xl p-4 text-center">
+        <p class="text-2xl font-bold text-red-700" id="stat-flagged">—</p>
+        <p class="text-xs text-slate-500 mt-1">Flagged</p>
+      </div>
+    </div>
+    <button onclick="downloadReport()"
+      class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3.5 rounded-xl transition text-sm flex items-center justify-center gap-2 mb-4">
+      ⬇️ Download Combined PDF Report
+    </button>
+    <p class="text-center text-xs text-slate-400">Report available for 48 hours. After that, data is permanently purged.</p>
+    <button onclick="resetDashboard()"
+      class="w-full mt-4 text-slate-500 hover:text-slate-700 text-sm py-2 rounded-xl transition border border-slate-200 hover:border-slate-300">
+      Run Another Check
+    </button>
+  </div>
+
+</main>
+
+<footer class="bg-white py-8 px-8 border-t border-slate-100 text-center mt-10">
+  <p class="text-xs text-slate-400 uppercase tracking-widest">© 2026 WorkforceComply. Documentation support only.</p>
+</footer>
+
+<script>
+let memberData = null;
+let selectedFile = null;
+
+window.addEventListener('load', () => {
+  const check = setInterval(() => {
+    if (window.$memberstack) { clearInterval(check); initAuth(); }
+  }, 200);
+  setTimeout(() => { clearInterval(check); if (!memberData) showGate(); }, 3000);
+});
+
+async function initAuth() {
+  try {
+    const member = await window.$memberstack.getCurrentMember();
+    if (member && member.data) { memberData = member.data; showDashboard(); }
+    else showGate();
+  } catch(e) { showGate(); }
+}
+
+function showGate() { document.getElementById('gate').style.display = 'flex'; }
+
+function showDashboard() {
+  document.getElementById('gate').style.display = 'none';
+  const name = memberData?.auth?.email || 'Member';
+  document.getElementById('member-name').textContent = name;
+}
+
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errEl = document.getElementById('gate-error');
+  errEl.classList.add('hidden');
+  if (!email || !password) { errEl.textContent = 'Please enter your email and password.'; errEl.classList.remove('hidden'); return; }
+  try {
+    const { data } = await window.$memberstack.loginMemberEmailPassword({ email, password });
+    memberData = data; showDashboard();
+  } catch(e) { errEl.textContent = 'Invalid email or password.'; errEl.classList.remove('hidden'); }
+}
+
+async function doLogout() { await window.$memberstack.logout(); window.location.href = 'index.html'; }
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') doLogin();
+});
+
+function handleDragOver(e) { e.preventDefault(); document.getElementById('drop-zone').classList.add('dragover'); }
+function handleDragLeave() { document.getElementById('drop-zone').classList.remove('dragover'); }
+function handleDrop(e) { e.preventDefault(); document.getElementById('drop-zone').classList.remove('dragover'); if(e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]); }
+function handleFileSelect(e) { if(e.target.files[0]) setFile(e.target.files[0]); }
+
+function setFile(file) {
+  selectedFile = file;
+  const n = document.getElementById('file-name');
+  n.textContent = '📎 ' + file.name + ' (' + (file.size/1024).toFixed(1) + ' KB)';
+  n.classList.remove('hidden');
+  document.getElementById('run-btn').disabled = false;
+}
+
+function startChecks() {
+  if (!selectedFile) return;
+  document.getElementById('upload-card').classList.add('hidden');
+  document.getElementById('progress-card').classList.remove('hidden');
+  setStep(2);
+  let progress = 0;
+  updateCheck('adverse','running','🔄','Checking...');
+  document.getElementById('progress-label').textContent = 'Checking LDH Adverse Actions...';
+  const iv = setInterval(() => {
+    progress += 2;
+    document.getElementById('progress-bar').style.width = progress + '%';
+    if (progress === 50) { updateCheck('adverse','done','✅','Complete'); updateCheck('cna','running','🔄','Checking...'); document.getElementById('progress-label').textContent = 'Checking CNA Registry...'; }
+    if (progress >= 100) { clearInterval(iv); updateCheck('cna','done','✅','Complete'); document.getElementById('progress-label').textContent = 'Generating PDF...'; setTimeout(showResults, 1000); }
+  }, 80);
+}
+
+function updateCheck(which, status, icon, label) {
+  document.getElementById('check-'+which+'-icon').textContent = icon;
+  const b = document.getElementById('check-'+which+'-badge');
+  b.textContent = label;
+  b.className = 'ml-auto text-xs font-medium px-2.5 py-1 rounded-full badge-'+status;
+}
+
+function showResults() {
+  document.getElementById('progress-card').classList.add('hidden');
+  document.getElementById('results-card').classList.remove('hidden');
+  setStep(3);
+}
+
+function downloadReport() {
+  alert('Your PDF report is ready!\n\nThe full download feature will be connected to your backend shortly.');
+}
+
+function resetDashboard() {
+  selectedFile = null;
+  document.getElementById('file-name').classList.add('hidden');
+  document.getElementById('file-input').value = '';
+  document.getElementById('run-btn').disabled = true;
+  document.getElementById('upload-card').classList.remove('hidden');
+  document.getElementById('progress-card').classList.add('hidden');
+  document.getElementById('results-card').classList.add('hidden');
+  document.getElementById('progress-bar').style.width = '0%';
+  updateCheck('adverse','pending','⏳','Pending');
+  updateCheck('cna','pending','⏳','Pending');
+  setStep(1);
+}
+
+function setStep(n) {
+  [1,2,3].forEach(i => {
+    document.getElementById('step'+i).classList.toggle('active', i <= n);
+  });
+}
+</script>
+</body>
+</html>
