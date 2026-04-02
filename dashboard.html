@@ -1,21 +1,28 @@
 <!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dashboard | WorkforceComply</title>
 
 <script src="https://cdn.tailwindcss.com"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
 
 <style>
-body { font-family: 'Inter', sans-serif; background: #f8fafc; }
-.nav-dark { background: #0f172a; }
-.hero-gradient { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); }
-.upload-zone { border: 2px dashed #cbd5e1; border-radius: 16px; transition: all 0.2s ease; cursor: pointer; }
-.upload-zone:hover { border-color: #3b82f6; background: #eff6ff; }
-#gate { position:fixed; inset:0; background:rgba(15,23,42,0.97); z-index:9999; display:flex; align-items:center; justify-content:center; }
-.gate-card { background:white; border-radius:20px; padding:40px; max-width:400px; width:90%; }
+body { font-family: Arial; background:#f8fafc; }
+#gate {
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.85);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.box {
+  background:white;
+  padding:30px;
+  border-radius:10px;
+  width:300px;
+}
 </style>
 </head>
 
@@ -23,102 +30,79 @@ body { font-family: 'Inter', sans-serif; background: #f8fafc; }
 
 <!-- LOGIN -->
 <div id="gate">
-  <div class="gate-card">
+  <div class="box">
     <h2>Login</h2>
-    <div id="gate-error" style="color:red;margin-bottom:10px;"></div>
+    <div id="error" style="color:red;margin-bottom:10px;"></div>
 
-    <input id="login-email" placeholder="Email" style="width:100%;margin-bottom:10px;">
-    <input id="login-password" type="password" placeholder="Password" style="width:100%;margin-bottom:10px;">
+    <input id="email" placeholder="Email" style="width:100%;margin-bottom:10px;">
+    <input id="password" type="password" placeholder="Password" style="width:100%;margin-bottom:10px;">
 
-    <button onclick="doLogin()">Sign In</button>
+    <button onclick="login()" style="width:100%;">Sign In</button>
   </div>
 </div>
 
-<!-- NAV -->
-<nav class="nav-dark text-white p-4">
-  WorkforceComply
-  <span id="member-name"></span>
-  <button onclick="doLogout()">Logout</button>
-</nav>
-
-<!-- MAIN -->
-<main style="padding:20px;">
+<!-- DASHBOARD -->
+<div id="app" style="display:none;padding:20px;">
   <h1>Dashboard</h1>
-</main>
+  <div id="user"></div>
+  <button onclick="logout()">Logout</button>
+</div>
 
-<!-- MEMBERSTACK (REQUIRED) -->
+<!-- MEMBERSTACK -->
 <script data-memberstack-app="app_cmnhnat7r001d0susf7cy5mlo" src="https://static.memberstack.com/scripts/v1/memberstack.js"></script>
 
-<!-- SCRIPT -->
 <script>
-let memberstack = null;
-let memberData = null;
-let initError = null;
+let ms = null;
 
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener("DOMContentLoaded", async () => {
   try {
-    if (!window.$memberstackDom) {
-      throw new Error('Memberstack failed to load');
-    }
+    if (!window.$memberstackDom) throw new Error("Memberstack failed to load");
 
-    memberstack = window.$memberstackDom;
+    ms = window.$memberstackDom;
 
-    const { data: member } = await memberstack.getCurrentMember();
+    const { data: member } = await ms.getCurrentMember();
 
     if (member) {
-      memberData = member;
-      showDashboard();
+      showApp(member);
     } else {
-      showGate();
+      showLogin();
     }
 
   } catch (e) {
-    initError = e;
     console.error(e);
-    showGate();
+    document.getElementById("error").innerText = e.message;
+    showLogin();
   }
 });
 
-function showGate() {
-  document.getElementById('gate').style.display = 'flex';
+function showLogin() {
+  document.getElementById("gate").style.display = "flex";
+  document.getElementById("app").style.display = "none";
 }
 
-function showDashboard() {
-  document.getElementById('gate').style.display = 'none';
-  document.getElementById('member-name').textContent =
-    memberData?.auth?.email || memberData?.email || '';
+function showApp(member) {
+  document.getElementById("gate").style.display = "none";
+  document.getElementById("app").style.display = "block";
+  document.getElementById("user").innerText = member.email || "";
 }
 
-async function doLogin() {
-  const email = document.getElementById('login-email').value;
-  const password = document.getElementById('login-password').value;
-  const err = document.getElementById('gate-error');
-
-  err.textContent = '';
-
-  if (!memberstack) {
-    err.textContent = initError?.message || 'Memberstack not ready';
-    return;
-  }
+async function login() {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
 
   try {
-    await memberstack.loginMemberEmailPassword({ email, password });
+    await ms.loginMemberEmailPassword({ email, password });
 
-    const { data } = await memberstack.getCurrentMember();
-    memberData = data;
-
-    if (!memberData) throw new Error('Login failed');
-
-    showDashboard();
+    const { data } = await ms.getCurrentMember();
+    showApp(data);
 
   } catch (e) {
-    err.textContent = e.message || 'Login failed';
+    document.getElementById("error").innerText = e.message;
   }
 }
 
-async function doLogout() {
-  if (!memberstack) return;
-  await memberstack.logout();
+async function logout() {
+  await ms.logout();
   location.reload();
 }
 </script>
