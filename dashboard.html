@@ -204,7 +204,8 @@
 let memberData = null;
 let selectedFile = null;
 
-const memberstack = memberstackDOM.init({ publicKey: "pk_5349361ec61c63d0c9c1" });
+let memberstack = null;
+window.addEventListener('load', () => { memberstack = memberstackDOM.init({ publicKey: "pk_5349361ec61c63d0c9c1" }); });
 
 window.addEventListener('load', async () => {
   try {
