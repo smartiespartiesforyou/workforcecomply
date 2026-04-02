@@ -6,7 +6,6 @@
 <title>Dashboard | WorkforceComply</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@memberstack/dom@latest/dist/memberstack-dom.umd.js"></script>
 <style>
   body { font-family: 'Inter', sans-serif; background: #f8fafc; }
   .nav-dark { background: #0f172a; }
@@ -153,7 +152,7 @@
         <div id="check-cna-icon" class="text-lg">⏳</div>
         <div>
           <p class="text-sm font-semibold text-slate-700">CNA Registry</p>
-          <p class="text-xs text-slate.400">tlc.dhh.la.gov</p>
+          <p class="text-xs text-slate-400">tlc.dhh.la.gov</p>
         </div>
         <span id="check-cna-badge" class="ml-auto text-xs font-medium px-2.5 py-1 rounded-full badge-pending">Pending</span>
       </div>
@@ -200,21 +199,24 @@
   <p class="text-xs text-slate-400 uppercase tracking-widest">© 2026 WorkforceComply. Documentation support only.</p>
 </footer>
 
+<!-- Memberstack loaded at bottom of body so it's ready before our script runs -->
+<script src="https://cdn.jsdelivr.net/npm/@memberstack/dom@latest/dist/memberstack-dom.umd.js"></script>
 <script>
 let memberData = null;
 let selectedFile = null;
 let memberstack = null;
 
-window.addEventListener('load', async () => {
-  try {
-    memberstack = memberstackDOM.init({ publicKey: "pk_5349361ec61c63d0c9c1" });
-    const { data: member } = await memberstack.getCurrentMember();
+// Initialize immediately since script is at bottom of body
+try {
+  memberstack = memberstackDOM.init({ publicKey: "pk_5349361ec61c63d0c9c1" });
+  memberstack.getCurrentMember().then(({ data: member }) => {
     if (member) { memberData = member; showDashboard(); }
     else showGate();
-  } catch(e) { console.error(e); showGate(); }
-});
-
-setTimeout(() => { if (!memberData) showGate(); }, 4000);
+  }).catch(() => showGate());
+} catch(e) {
+  console.error(e);
+  showGate();
+}
 
 function showGate() { document.getElementById('gate').style.display = 'flex'; }
 function showDashboard() {
@@ -228,7 +230,7 @@ async function doLogin() {
   const errEl = document.getElementById('gate-error');
   errEl.classList.add('hidden');
   if (!email || !password) { errEl.textContent = 'Please enter your email and password.'; errEl.classList.remove('hidden'); return; }
-  if (!memberstack) { errEl.textContent = 'Still loading, please try again in a moment.'; errEl.classList.remove('hidden'); return; }
+  if (!memberstack) { errEl.textContent = 'Still loading, please refresh and try again.'; errEl.classList.remove('hidden'); return; }
   try {
     const { data } = await memberstack.loginMemberEmailPassword({ email, password });
     memberData = data; showDashboard();
