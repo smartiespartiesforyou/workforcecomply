@@ -6,7 +6,7 @@
 <title>Dashboard | WorkforceComply</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-<script src="https://static.memberstack.com/scripts/v1/memberstack.js" data-memberstack-id="pk_5349361ec61c63d0c9c1" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@memberstack/dom@latest/dist/memberstack-dom.umd.js"></script>
 <style>
   body { font-family: 'Inter', sans-serif; background: #f8fafc; }
   .nav-dark { background: #0f172a; }
@@ -204,9 +204,11 @@
 let memberData = null;
 let selectedFile = null;
 
-window.addEventListener('memberstack:ready', async () => {
+const memberstack = memberstackDOM.init({ publicKey: "pk_5349361ec61c63d0c9c1" });
+
+window.addEventListener('load', async () => {
   try {
-    const { data: member } = await window.$memberstackDom.getCurrentMember();
+    const { data: member } = await memberstack.getCurrentMember();
     if (member) { memberData = member; showDashboard(); }
     else showGate();
   } catch(e) { showGate(); }
@@ -229,13 +231,12 @@ async function doLogin() {
   errEl.classList.add('hidden');
   if (!email || !password) { errEl.textContent = 'Please enter your email and password.'; errEl.classList.remove('hidden'); return; }
   try {
-    const { data, error } = await window.$memberstackDom.loginMemberEmailPassword({ email, password });
-    if (error) { errEl.textContent = error.message || 'Invalid email or password.'; errEl.classList.remove('hidden'); }
-    else { memberData = data; showDashboard(); }
-  } catch(e) { errEl.textContent = 'Login failed. Please try again.'; errEl.classList.remove('hidden'); console.error(e); }
+    const { data } = await memberstack.loginMemberEmailPassword({ email, password });
+    memberData = data; showDashboard();
+  } catch(e) { errEl.textContent = e.message || 'Login failed. Please try again.'; errEl.classList.remove('hidden'); console.error(e); }
 }
 
-async function doLogout() { await window.$memberstackDom.logout(); window.location.href = 'index.html'; }
+async function doLogout() { await memberstack.logout(); window.location.href = 'index.html'; }
 
 document.addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
 
