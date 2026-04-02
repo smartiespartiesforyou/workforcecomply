@@ -228,6 +228,7 @@ async function doLogin() {
   const errEl = document.getElementById('gate-error');
   errEl.classList.add('hidden');
   if (!email || !password) { errEl.textContent = 'Please enter your email and password.'; errEl.classList.remove('hidden'); return; }
+  if (!memberstack) { errEl.textContent = 'Still loading, please try again in a moment.'; errEl.classList.remove('hidden'); return; }
   try {
     const { data } = await memberstack.loginMemberEmailPassword({ email, password });
     memberData = data; showDashboard();
