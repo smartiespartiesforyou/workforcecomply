@@ -199,85 +199,175 @@
   <p class="text-xs text-slate-400 uppercase tracking-widest">© 2026 WorkforceComply. Documentation support only.</p>
 </footer>
 
-<!-- Memberstack loaded at bottom of body so it's ready before our script runs -->
 <script src="https://cdn.jsdelivr.net/npm/@memberstack/dom@latest/dist/memberstack-dom.umd.js"></script>
 <script>
 let memberData = null;
 let selectedFile = null;
 let memberstack = null;
+let memberstackInitError = null;
 
-// Initialize immediately since script is at bottom of body
-try {
-  memberstack = memberstackDOM.init({ publicKey: "pk_5349361ec61c63d0c9c1" });
-  memberstack.getCurrentMember().then(({ data: member }) => {
-    if (member) { memberData = member; showDashboard(); }
-    else showGate();
-  }).catch(() => showGate());
-} catch(e) {
-  console.error(e);
-  showGate();
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    if (!window.memberstackDOM) {
+      throw new Error('Memberstack library did not load.');
+    }
+
+    memberstack = window.memberstackDOM.init({
+      publicKey: "pk_5349361ec61c63d0c9c1"
+    });
+
+    const result = await memberstack.getCurrentMember();
+    const member = result?.data;
+
+    if (member) {
+      memberData = member;
+      showDashboard();
+    } else {
+      showGate();
+    }
+  } catch (e) {
+    memberstackInitError = e;
+    console.error('Memberstack init failed:', e);
+    showGate();
+  }
+});
+
+function showGate() {
+  document.getElementById('gate').style.display = 'flex';
 }
 
-function showGate() { document.getElementById('gate').style.display = 'flex'; }
 function showDashboard() {
   document.getElementById('gate').style.display = 'none';
   const name = memberData?.auth?.email || memberData?.email || 'Member';
   document.getElementById('member-name').textContent = name;
 }
+
 async function doLogin() {
   const email = document.getElementById('login-email').value.trim();
   const password = document.getElementById('login-password').value;
   const errEl = document.getElementById('gate-error');
+
   errEl.classList.add('hidden');
-  if (!email || !password) { errEl.textContent = 'Please enter your email and password.'; errEl.classList.remove('hidden'); return; }
-  if (!memberstack) { errEl.textContent = 'Still loading, please refresh and try again.'; errEl.classList.remove('hidden'); return; }
+
+  if (!email || !password) {
+    errEl.textContent = 'Please enter your email and password.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+
+  if (!memberstack) {
+    errEl.textContent = memberstackInitError?.message || 'Memberstack failed to initialize. Check console.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+
   try {
-    const { data } = await memberstack.loginMemberEmailPassword({ email, password });
-    memberData = data; showDashboard();
-  } catch(e) { errEl.textContent = e.message || 'Login failed. Please try again.'; errEl.classList.remove('hidden'); console.error(e); }
+    const result = await memberstack.loginMemberEmailPassword({ email, password });
+    memberData = result?.data?.member || result?.data || null;
+
+    if (!memberData) {
+      throw new Error('Login worked, but no member data was returned.');
+    }
+
+    showDashboard();
+  } catch (e) {
+    errEl.textContent = e.message || 'Login failed. Please try again.';
+    errEl.classList.remove('hidden');
+    console.error('Login failed:', e);
+  }
 }
-async function doLogout() { await memberstack.logout(); window.location.href = 'index.html'; }
-document.addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
-function handleDragOver(e) { e.preventDefault(); document.getElementById('drop-zone').classList.add('dragover'); }
-function handleDragLeave() { document.getElementById('drop-zone').classList.remove('dragover'); }
-function handleDrop(e) { e.preventDefault(); document.getElementById('drop-zone').classList.remove('dragover'); if(e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]); }
-function handleFileSelect(e) { if(e.target.files[0]) setFile(e.target.files[0]); }
+
+async function doLogout() {
+  try {
+    if (!memberstack) return;
+    await memberstack.logout();
+    window.location.href = 'index.html';
+  } catch (e) {
+    console.error('Logout failed:', e);
+  }
+}
+
+document.addEventListener('keydown', (e) => {
+  const gateVisible = document.getElementById('gate').style.display !== 'none';
+  if (e.key === 'Enter' && gateVisible) {
+    doLogin();
+  }
+});
+
+function handleDragOver(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.add('dragover');
+}
+
+function handleDragLeave() {
+  document.getElementById('drop-zone').classList.remove('dragover');
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('dragover');
+  if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
+}
+
+function handleFileSelect(e) {
+  if (e.target.files[0]) setFile(e.target.files[0]);
+}
+
 function setFile(file) {
   selectedFile = file;
   const n = document.getElementById('file-name');
-  n.textContent = '📎 ' + file.name + ' (' + (file.size/1024).toFixed(1) + ' KB)';
+  n.textContent = '📎 ' + file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)';
   n.classList.remove('hidden');
   document.getElementById('run-btn').disabled = false;
 }
+
 function startChecks() {
   if (!selectedFile) return;
+
   document.getElementById('upload-card').classList.add('hidden');
   document.getElementById('progress-card').classList.remove('hidden');
   setStep(2);
+
   let progress = 0;
-  updateCheck('adverse','running','🔄','Checking...');
+  updateCheck('adverse', 'running', '🔄', 'Checking...');
   document.getElementById('progress-label').textContent = 'Checking LDH Adverse Actions...';
+
   const iv = setInterval(() => {
     progress += 2;
     document.getElementById('progress-bar').style.width = progress + '%';
-    if (progress === 50) { updateCheck('adverse','done','✅','Complete'); updateCheck('cna','running','🔄','Checking...'); document.getElementById('progress-label').textContent = 'Checking CNA Registry...'; }
-    if (progress >= 100) { clearInterval(iv); updateCheck('cna','done','✅','Complete'); document.getElementById('progress-label').textContent = 'Generating PDF...'; setTimeout(showResults, 1000); }
+
+    if (progress === 50) {
+      updateCheck('adverse', 'done', '✅', 'Complete');
+      updateCheck('cna', 'running', '🔄', 'Checking...');
+      document.getElementById('progress-label').textContent = 'Checking CNA Registry...';
+    }
+
+    if (progress >= 100) {
+      clearInterval(iv);
+      updateCheck('cna', 'done', '✅', 'Complete');
+      document.getElementById('progress-label').textContent = 'Generating PDF...';
+      setTimeout(showResults, 1000);
+    }
   }, 80);
 }
+
 function updateCheck(which, status, icon, label) {
-  document.getElementById('check-'+which+'-icon').textContent = icon;
-  const b = document.getElementById('check-'+which+'-badge');
+  document.getElementById('check-' + which + '-icon').textContent = icon;
+  const b = document.getElementById('check-' + which + '-badge');
   b.textContent = label;
-  b.className = 'ml-auto text-xs font-medium px-2.5 py-1 rounded-full badge-'+status;
+  b.className = 'ml-auto text-xs font-medium px-2.5 py-1 rounded-full badge-' + status;
 }
+
 function showResults() {
   document.getElementById('progress-card').classList.add('hidden');
   document.getElementById('results-card').classList.remove('hidden');
   setStep(3);
 }
+
 function downloadReport() {
   alert('Your PDF report is ready!\n\nThe full download feature will be connected to your backend shortly.');
 }
+
 function resetDashboard() {
   selectedFile = null;
   document.getElementById('file-name').classList.add('hidden');
@@ -287,12 +377,15 @@ function resetDashboard() {
   document.getElementById('progress-card').classList.add('hidden');
   document.getElementById('results-card').classList.add('hidden');
   document.getElementById('progress-bar').style.width = '0%';
-  updateCheck('adverse','pending','⏳','Pending');
-  updateCheck('cna','pending','⏳','Pending');
+  updateCheck('adverse', 'pending', '⏳', 'Pending');
+  updateCheck('cna', 'pending', '⏳', 'Pending');
   setStep(1);
 }
+
 function setStep(n) {
-  [1,2,3].forEach(i => { document.getElementById('step'+i).classList.toggle('active', i <= n); });
+  [1, 2, 3].forEach(i => {
+    document.getElementById('step' + i).classList.toggle('active', i <= n);
+  });
 }
 </script>
 </body>
