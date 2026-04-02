@@ -153,7 +153,7 @@
         <div id="check-cna-icon" class="text-lg">⏳</div>
         <div>
           <p class="text-sm font-semibold text-slate-700">CNA Registry</p>
-          <p class="text-xs text-slate-400">tlc.dhh.la.gov</p>
+          <p class="text-xs text-slate.400">tlc.dhh.la.gov</p>
         </div>
         <span id="check-cna-badge" class="ml-auto text-xs font-medium px-2.5 py-1 rounded-full badge-pending">Pending</span>
       </div>
@@ -203,28 +203,25 @@
 <script>
 let memberData = null;
 let selectedFile = null;
-
 let memberstack = null;
-window.addEventListener('load', () => { memberstack = memberstackDOM.init({ publicKey: "pk_5349361ec61c63d0c9c1" }); });
 
 window.addEventListener('load', async () => {
   try {
+    memberstack = memberstackDOM.init({ publicKey: "pk_5349361ec61c63d0c9c1" });
     const { data: member } = await memberstack.getCurrentMember();
     if (member) { memberData = member; showDashboard(); }
     else showGate();
-  } catch(e) { showGate(); }
+  } catch(e) { console.error(e); showGate(); }
 });
 
 setTimeout(() => { if (!memberData) showGate(); }, 4000);
 
 function showGate() { document.getElementById('gate').style.display = 'flex'; }
-
 function showDashboard() {
   document.getElementById('gate').style.display = 'none';
   const name = memberData?.auth?.email || memberData?.email || 'Member';
   document.getElementById('member-name').textContent = name;
 }
-
 async function doLogin() {
   const email = document.getElementById('login-email').value.trim();
   const password = document.getElementById('login-password').value;
@@ -236,16 +233,12 @@ async function doLogin() {
     memberData = data; showDashboard();
   } catch(e) { errEl.textContent = e.message || 'Login failed. Please try again.'; errEl.classList.remove('hidden'); console.error(e); }
 }
-
 async function doLogout() { await memberstack.logout(); window.location.href = 'index.html'; }
-
 document.addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
-
 function handleDragOver(e) { e.preventDefault(); document.getElementById('drop-zone').classList.add('dragover'); }
 function handleDragLeave() { document.getElementById('drop-zone').classList.remove('dragover'); }
 function handleDrop(e) { e.preventDefault(); document.getElementById('drop-zone').classList.remove('dragover'); if(e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]); }
 function handleFileSelect(e) { if(e.target.files[0]) setFile(e.target.files[0]); }
-
 function setFile(file) {
   selectedFile = file;
   const n = document.getElementById('file-name');
@@ -253,7 +246,6 @@ function setFile(file) {
   n.classList.remove('hidden');
   document.getElementById('run-btn').disabled = false;
 }
-
 function startChecks() {
   if (!selectedFile) return;
   document.getElementById('upload-card').classList.add('hidden');
@@ -269,24 +261,20 @@ function startChecks() {
     if (progress >= 100) { clearInterval(iv); updateCheck('cna','done','✅','Complete'); document.getElementById('progress-label').textContent = 'Generating PDF...'; setTimeout(showResults, 1000); }
   }, 80);
 }
-
 function updateCheck(which, status, icon, label) {
   document.getElementById('check-'+which+'-icon').textContent = icon;
   const b = document.getElementById('check-'+which+'-badge');
   b.textContent = label;
   b.className = 'ml-auto text-xs font-medium px-2.5 py-1 rounded-full badge-'+status;
 }
-
 function showResults() {
   document.getElementById('progress-card').classList.add('hidden');
   document.getElementById('results-card').classList.remove('hidden');
   setStep(3);
 }
-
 function downloadReport() {
   alert('Your PDF report is ready!\n\nThe full download feature will be connected to your backend shortly.');
 }
-
 function resetDashboard() {
   selectedFile = null;
   document.getElementById('file-name').classList.add('hidden');
@@ -300,7 +288,6 @@ function resetDashboard() {
   updateCheck('cna','pending','⏳','Pending');
   setStep(1);
 }
-
 function setStep(n) {
   [1,2,3].forEach(i => { document.getElementById('step'+i).classList.toggle('active', i <= n); });
 }
