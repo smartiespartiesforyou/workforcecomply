@@ -204,26 +204,21 @@
 let memberData = null;
 let selectedFile = null;
 
-window.addEventListener('load', () => {
-  const check = setInterval(() => {
-    if (window.$memberstack) { clearInterval(check); initAuth(); }
-  }, 200);
-  setTimeout(() => { clearInterval(check); if (!memberData) showGate(); }, 3000);
-});
-
-async function initAuth() {
+window.addEventListener('memberstack:ready', async () => {
   try {
-    const member = await window.$memberstack.getCurrentMember();
-    if (member && member.data) { memberData = member.data; showDashboard(); }
+    const { data: member } = await window.$memberstackDom.getCurrentMember();
+    if (member) { memberData = member; showDashboard(); }
     else showGate();
   } catch(e) { showGate(); }
-}
+});
+
+setTimeout(() => { if (!memberData) showGate(); }, 4000);
 
 function showGate() { document.getElementById('gate').style.display = 'flex'; }
 
 function showDashboard() {
   document.getElementById('gate').style.display = 'none';
-  const name = memberData?.auth?.email || 'Member';
+  const name = memberData?.auth?.email || memberData?.email || 'Member';
   document.getElementById('member-name').textContent = name;
 }
 
@@ -234,16 +229,15 @@ async function doLogin() {
   errEl.classList.add('hidden');
   if (!email || !password) { errEl.textContent = 'Please enter your email and password.'; errEl.classList.remove('hidden'); return; }
   try {
-    const { data } = await window.$memberstack.loginMemberEmailPassword({ email, password });
-    memberData = data; showDashboard();
-  } catch(e) { errEl.textContent = 'Invalid email or password.'; errEl.classList.remove('hidden'); }
+    const { data, error } = await window.$memberstackDom.loginMemberEmailPassword({ email, password });
+    if (error) { errEl.textContent = error.message || 'Invalid email or password.'; errEl.classList.remove('hidden'); }
+    else { memberData = data; showDashboard(); }
+  } catch(e) { errEl.textContent = 'Login failed. Please try again.'; errEl.classList.remove('hidden'); console.error(e); }
 }
 
-async function doLogout() { await window.$memberstack.logout(); window.location.href = 'index.html'; }
+async function doLogout() { await window.$memberstackDom.logout(); window.location.href = 'index.html'; }
 
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') doLogin();
-});
+document.addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
 
 function handleDragOver(e) { e.preventDefault(); document.getElementById('drop-zone').classList.add('dragover'); }
 function handleDragLeave() { document.getElementById('drop-zone').classList.remove('dragover'); }
@@ -306,9 +300,7 @@ function resetDashboard() {
 }
 
 function setStep(n) {
-  [1,2,3].forEach(i => {
-    document.getElementById('step'+i).classList.toggle('active', i <= n);
-  });
+  [1,2,3].forEach(i => { document.getElementById('step'+i).classList.toggle('active', i <= n); });
 }
 </script>
 </body>
