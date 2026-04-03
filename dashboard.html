@@ -61,19 +61,28 @@
 <!-- MAIN -->
 <main class="max-w-6xl mx-auto px-6 py-10">
 
-  <!-- STATUS CARD (THIS is your SaaS touch) -->
-  <section class="mb-8">
-    <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex justify-between items-center">
-      <div>
-        <p class="text-sm text-slate-500 mb-1">Account Status</p>
-        <p class="text-lg font-semibold text-green-600">Active Subscription</p>
+  <!-- TOP STATUS ROW -->
+  <section class="grid gap-6 lg:grid-cols-3 mb-8">
+    <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm lg:col-span-2">
+      <p class="text-sm text-slate-500 mb-1">Account Status</p>
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <p class="text-lg font-semibold text-green-600">Active Subscription</p>
+          <p class="text-sm text-slate-500 mt-1">Your access is active and ready to use.</p>
+        </div>
+        <span data-ms-member="email" class="text-sm text-slate-500 break-all"></span>
       </div>
-      <span data-ms-member="email" class="text-sm text-slate-500"></span>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+      <p class="text-sm text-slate-500 mb-1">System Status</p>
+      <p class="text-lg font-semibold text-slate-900">Operational</p>
+      <p class="text-sm text-slate-500 mt-1">All core compliance tools available.</p>
     </div>
   </section>
 
   <!-- TOOLS -->
-  <section class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+  <section class="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
 
     <a href="adverse.html" class="block bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition">
       <div class="w-12 h-12 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center text-xl mb-4">⚖️</div>
@@ -114,6 +123,68 @@
     </div>
 
   </section>
+
+  <!-- RECENT ACTIVITY -->
+  <section class="grid gap-6 lg:grid-cols-3">
+    <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm lg:col-span-2">
+      <div class="flex items-center justify-between mb-5">
+        <div>
+          <p class="text-sm text-slate-500">Recent Activity</p>
+          <h2 class="text-xl font-semibold text-slate-900">Latest Dashboard Events</h2>
+        </div>
+        <span class="text-xs text-slate-400 uppercase tracking-widest">Preview</span>
+      </div>
+
+      <div class="space-y-4">
+        <div class="flex items-start gap-4 border border-slate-100 rounded-xl p-4">
+          <div class="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-sm font-bold">01</div>
+          <div>
+            <p class="text-sm font-semibold text-slate-900">Account access confirmed</p>
+            <p class="text-sm text-slate-500">Your member dashboard is active and available.</p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-4 border border-slate-100 rounded-xl p-4">
+          <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-sm font-bold">02</div>
+          <div>
+            <p class="text-sm font-semibold text-slate-900">Compliance tools ready</p>
+            <p class="text-sm text-slate-500">Adverse Actions, CNA Registry, and OIG tools are available from this dashboard.</p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-4 border border-slate-100 rounded-xl p-4">
+          <div class="w-10 h-10 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-sm font-bold">03</div>
+          <div>
+            <p class="text-sm font-semibold text-slate-900">Documentation reminder</p>
+            <p class="text-sm text-slate-500">Always review results before final employment decisions.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+      <p class="text-sm text-slate-500 mb-1">Quick Summary</p>
+      <h2 class="text-xl font-semibold text-slate-900 mb-4">Workspace</h2>
+
+      <div class="space-y-4">
+        <div class="border border-slate-100 rounded-xl p-4">
+          <p class="text-xs uppercase tracking-widest text-slate-400 mb-1">Tools Available</p>
+          <p class="text-2xl font-bold text-slate-900">3</p>
+        </div>
+
+        <div class="border border-slate-100 rounded-xl p-4">
+          <p class="text-xs uppercase tracking-widest text-slate-400 mb-1">Support Access</p>
+          <p class="text-base font-semibold text-slate-900">Included</p>
+        </div>
+
+        <div class="border border-slate-100 rounded-xl p-4">
+          <p class="text-xs uppercase tracking-widest text-slate-400 mb-1">Plan Status</p>
+          <p class="text-base font-semibold text-green-600">Active</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
 </main>
 
 <footer class="bg-white py-8 px-6 border-t border-slate-200 text-center">
