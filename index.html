@@ -1,20 +1,20 @@
 <!DOCTYPE html>
 <html lang="en" class="scroll-smooth">
 <head>
+
+    <!-- Memberstack FIRST -->
+    <script
+        data-memberstack-app="app_cmnhnat7r001d0susf7cy5mlo"
+        src="https://static.memberstack.com/scripts/v2/memberstack.js"
+        type="text/javascript">
+    </script>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WorkforceComply | Louisiana Compliance & CNA Verification</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
-
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-
-    <!-- Memberstack -->
-    <script
-      src="https://static.memberstack.com/scripts/v1/memberstack.js"
-      data-memberstack-app="app_cmnhnat7r001d0susf7cy5mlo"
-      defer
-    ></script>
 
     <style>
         body { font-family: 'Inter', sans-serif; }
@@ -27,8 +27,10 @@
     <!-- NAV -->
     <nav class="flex items-center justify-between px-8 py-4 bg-[#0f172a] text-white">
         <div class="flex items-center gap-3">
-            <div class="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center font-bold">W</div>
-            <span class="text-xl font-bold tracking-tight text-white">WorkforceComply</span>
+            <a href="index.html" class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center font-bold text-white">W</div>
+                <span class="text-xl font-bold tracking-tight text-white">WorkforceComply</span>
+            </a>
         </div>
 
         <div class="hidden md:flex gap-8 text-sm font-medium">
@@ -37,8 +39,19 @@
             <a href="mailto:support@workforcecomply.com" class="hover:text-blue-400 transition">Contact</a>
         </div>
 
-        <div class="flex gap-4 items-center">
-            <a href="pricing.html" class="bg-blue-600 hover:bg-blue-700 px-5 py-2 rounded-lg text-sm font-semibold transition shadow-lg shadow-blue-500/20 text-white">
+        <div class="flex gap-3 items-center">
+            <a
+                href="#"
+                data-ms-modal="login"
+                class="border border-white/20 hover:border-white/40 hover:bg-white/10 px-5 py-2 rounded-lg text-sm font-semibold transition text-white"
+            >
+                Login
+            </a>
+
+            <a
+                href="pricing.html"
+                class="bg-blue-600 hover:bg-blue-700 px-5 py-2 rounded-lg text-sm font-semibold transition shadow-lg shadow-blue-500/20 text-white"
+            >
                 Get Started
             </a>
         </div>
@@ -56,14 +69,24 @@
                 Run CNA registry, OIG exclusion, and LDH adverse action checks in one step with audit-ready documentation.
             </p>
 
-            <div class="relative max-w-2xl mx-auto mt-10">
-                <a href="pricing.html"
-                    class="inline-block bg-blue-600 hover:bg-blue-700 px-8 py-4 rounded-xl font-bold transition shadow-2xl text-white text-lg">
+            <div class="relative max-w-2xl mx-auto mt-10 flex flex-col sm:flex-row gap-4 justify-center">
+                <a
+                    href="pricing.html"
+                    class="inline-block bg-blue-600 hover:bg-blue-700 px-8 py-4 rounded-xl font-bold transition shadow-2xl text-white text-lg"
+                >
                     Access Compliance Tools
+                </a>
+
+                <a
+                    href="#"
+                    data-ms-modal="login"
+                    class="inline-block border border-white/20 hover:border-white/40 hover:bg-white/10 px-8 py-4 rounded-xl font-bold transition text-white text-lg"
+                >
+                    Member Login
                 </a>
             </div>
 
-            <div class="mt-8 flex justify-center gap-8 text-sm text-slate-400">
+            <div class="mt-8 flex justify-center gap-8 text-sm text-slate-400 flex-wrap">
                 <span>✓ Audit-Ready Documentation</span>
                 <span>✓ Real-Time Results</span>
             </div>
