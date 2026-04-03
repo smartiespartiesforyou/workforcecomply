@@ -16,8 +16,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
 
 <style>
-body { font-family: 'Inter', sans-serif; }
-.hero-gradient { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); }
+  body { font-family: 'Inter', sans-serif; }
+  .hero-gradient { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); }
 </style>
 
 </head>
@@ -27,17 +27,17 @@ body { font-family: 'Inter', sans-serif; }
 <nav class="flex items-center justify-between px-8 py-4 bg-[#0f172a] text-white">
   <a href="index.html" class="flex items-center gap-2">
     <div class="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center font-bold text-white">W</div>
-    <span class="text-xl font-bold">WorkforceComply</span>
+    <span class="text-xl font-bold tracking-tight text-white">WorkforceComply</span>
   </a>
 </nav>
 
-<header class="hero-gradient text-white py-16 text-center">
+<header class="hero-gradient text-white py-16 px-6 text-center">
   <h1 class="text-4xl font-bold mb-4">Simple, Scalable Pricing</h1>
-  <p class="text-slate-400">Louisiana CNA registry and OIG/LDH checks.</p>
+  <p class="text-slate-400 max-w-2xl mx-auto">Louisiana CNA registry and OIG/LDH Exclusion checks.</p>
 </header>
 
 <section class="max-w-4xl mx-auto -mt-10 px-6 pb-20">
-  <div class="bg-white p-10 rounded-2xl shadow-xl text-center">
+  <div class="bg-white p-10 rounded-2xl shadow-xl border border-slate-100 text-center">
 
     <h3 class="text-xl font-bold mb-2">Essential Plan</h3>
 
@@ -45,6 +45,10 @@ body { font-family: 'Inter', sans-serif; }
       <span class="text-5xl font-extrabold">$49.99</span>
       <span class="text-slate-500 text-sm">/mo</span>
     </div>
+
+    <p class="text-sm text-slate-600 mb-6 font-medium">
+      Up to 150 employees
+    </p>
 
     <ul class="space-y-3 text-sm mb-8 text-slate-700">
       <li>✔ LA CNA Registry Lookups</li>
@@ -54,8 +58,7 @@ body { font-family: 'Inter', sans-serif; }
     </ul>
 
     <a
-      id="checkoutBtn"
-      href="javascript:void(0);"
+      href="#"
       data-ms-action="price:add"
       data-ms-price:add="prc_workforcecomply-essential-d4220apj"
       class="block w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition text-center text-lg"
@@ -71,6 +74,28 @@ body { font-family: 'Inter', sans-serif; }
     ProjectorFirst and WorkforceComply are products operated by AP Management.
   </p>
 </footer>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const btn = document.querySelector("[data-ms-action='price:add']");
+  if (!btn) return;
+
+  btn.addEventListener("click", function (e) {
+    e.preventDefault();
+
+    const ms = window.$memberstackDom;
+
+    if (!ms) {
+      alert("Still loading. Try again.");
+      return;
+    }
+
+    ms.purchasePlansWithCheckout({
+      priceId: "prc_workforcecomply-essential-d4220apj"
+    });
+  });
+});
+</script>
 
 </body>
 </html>
