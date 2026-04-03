@@ -1,296 +1,124 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dashboard | WorkforceComply</title>
 
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<!-- Memberstack FIRST -->
+<script
+  data-memberstack-app="app_cmnhnat7r001d0susf7cy5mlo"
+  src="https://static.memberstack.com/scripts/v2/memberstack.js"
+  type="text/javascript">
+</script>
 
-  <style>
-    body { font-family: 'Inter', sans-serif; }
-    .hero-gradient {
-      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-    }
-    .nav-dark {
-      background: #0f172a;
-    }
-    #gate {
-      position: fixed;
-      inset: 0;
-      background: rgba(15, 23, 42, 0.96);
-      z-index: 9999;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .gate-card {
-      background: white;
-      border-radius: 20px;
-      padding: 40px 32px;
-      max-width: 420px;
-      width: 90%;
-      text-align: center;
-      box-shadow: 0 25px 50px rgba(0,0,0,0.25);
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dashboard | WorkforceComply</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  body { font-family: 'Inter', sans-serif; }
+  .hero-gradient {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  }
+</style>
+
 </head>
+
 <body class="bg-slate-50 text-slate-900">
 
-  <!-- LOGIN GATE -->
-  <div id="gate">
-    <div class="gate-card">
-      <div class="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-white text-xl mx-auto mb-6">W</div>
-      <h2 class="text-2xl font-bold text-slate-900 mb-2">Welcome Back</h2>
-      <p class="text-slate-500 text-sm mb-8">Sign in to access your dashboard</p>
-
-      <div id="gate-error" class="hidden mb-4 text-sm text-red-600 bg-red-50 rounded-lg px-4 py-3 text-left"></div>
-
-      <div class="text-left space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">Email</label>
-          <input
-            id="login-email"
-            type="email"
-            placeholder="you@organization.com"
-            class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-          />
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">Password</label>
-          <input
-            id="login-password"
-            type="password"
-            placeholder="••••••••"
-            class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-          />
-        </div>
-
-        <button
-          onclick="doLogin()"
-          class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition text-sm"
-        >
-          Sign In
-        </button>
-      </div>
-
-      <p class="mt-6 text-xs text-slate-400">
-        Don't have an account?
-        <a href="pricing.html" class="text-blue-600 hover:underline">View pricing</a>
-      </p>
-
-      <p class="mt-2 text-xs text-slate-400">
-        <a href="index.html" class="hover:underline">← Back to home</a>
-      </p>
-    </div>
+<!-- NAV -->
+<nav class="flex items-center justify-between px-6 md:px-8 py-4 bg-[#0f172a] text-white sticky top-0 z-50 shadow-lg">
+  <div class="flex items-center gap-3">
+    <div class="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center font-bold text-sm">W</div>
+    <span class="text-xl font-bold tracking-tight">WorkforceComply</span>
   </div>
 
-  <!-- NAV -->
-  <nav class="flex items-center justify-between px-6 md:px-8 py-4 nav-dark text-white sticky top-0 z-50 shadow-lg">
-    <div class="flex items-center gap-3">
-      <div class="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center font-bold text-sm">W</div>
-      <span class="text-xl font-bold tracking-tight">WorkforceComply</span>
-    </div>
+  <div class="flex items-center gap-4">
+    <span data-ms-member="email" class="text-sm text-slate-300 hidden sm:inline"></span>
 
-    <div class="flex items-center gap-4">
-      <span id="member-name" class="text-sm text-slate-300 hidden sm:inline"></span>
-      <button
-        onclick="doLogout()"
-        class="text-sm text-slate-300 hover:text-white transition border border-slate-600 px-4 py-1.5 rounded-lg"
-      >
-        Sign Out
-      </button>
-    </div>
-  </nav>
+    <a
+      href="#"
+      data-ms-action="logout"
+      class="text-sm text-slate-300 hover:text-white transition border border-slate-600 px-4 py-1.5 rounded-lg"
+    >
+      Sign Out
+    </a>
+  </div>
+</nav>
 
-  <!-- HERO -->
-  <section class="hero-gradient text-white py-12 px-6">
-    <div class="max-w-6xl mx-auto">
-      <p class="uppercase tracking-[0.25em] text-xs text-slate-400 mb-3">Member Dashboard</p>
-      <h1 class="text-3xl md:text-4xl font-bold mb-3">Compliance Tools Dashboard</h1>
-      <p class="text-slate-300 max-w-2xl">
-        Access your healthcare HR compliance tools and member resources from one place.
-      </p>
+<!-- HERO -->
+<section class="hero-gradient text-white py-12 px-6">
+  <div class="max-w-6xl mx-auto">
+    <p class="uppercase tracking-[0.25em] text-xs text-slate-400 mb-3">Member Dashboard</p>
+    <h1 class="text-3xl md:text-4xl font-bold mb-3">Compliance Tools</h1>
+    <p class="text-slate-300 max-w-2xl">
+      Access your healthcare HR compliance tools and workflows.
+    </p>
+  </div>
+</section>
+
+<!-- MAIN -->
+<main class="max-w-6xl mx-auto px-6 py-10">
+
+  <!-- STATUS CARD (THIS is your SaaS touch) -->
+  <section class="mb-8">
+    <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex justify-between items-center">
+      <div>
+        <p class="text-sm text-slate-500 mb-1">Account Status</p>
+        <p class="text-lg font-semibold text-green-600">Active Subscription</p>
+      </div>
+      <span data-ms-member="email" class="text-sm text-slate-500"></span>
     </div>
   </section>
 
-  <!-- MAIN -->
-  <main class="max-w-6xl mx-auto px-6 py-10">
+  <!-- TOOLS -->
+  <section class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
 
-    <section class="mb-8">
-      <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-        <p class="text-sm text-slate-500 mb-2">Signed in as</p>
-        <p id="member-email-display" class="text-lg font-semibold text-slate-900">Member</p>
-      </div>
-    </section>
+    <a href="adverse.html" class="block bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition">
+      <div class="w-12 h-12 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center text-xl mb-4">⚖️</div>
+      <h2 class="text-lg font-semibold text-slate-900 mb-2">Adverse Actions</h2>
+      <p class="text-sm text-slate-500">Run Louisiana adverse action checks.</p>
+    </a>
 
-    <section class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+    <a href="cna.html" class="block bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition">
+      <div class="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-xl mb-4">🩺</div>
+      <h2 class="text-lg font-semibold text-slate-900 mb-2">CNA Registry</h2>
+      <p class="text-sm text-slate-500">Verify nurse aide certifications.</p>
+    </a>
 
-      <a href="adverse.html" class="block bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition">
-        <div class="w-12 h-12 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center text-xl mb-4">⚖️</div>
-        <h2 class="text-lg font-semibold text-slate-900 mb-2">Adverse Actions</h2>
-        <p class="text-sm text-slate-500">Open the Louisiana adverse actions tool.</p>
-      </a>
+    <a href="oig.html" class="block bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition">
+      <div class="w-12 h-12 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center text-xl mb-4">🔎</div>
+      <h2 class="text-lg font-semibold text-slate-900 mb-2">OIG Exclusion</h2>
+      <p class="text-sm text-slate-500">Run exclusion screening.</p>
+    </a>
 
-      <a href="cna.html" class="block bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition">
-        <div class="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-xl mb-4">🩺</div>
-        <h2 class="text-lg font-semibold text-slate-900 mb-2">CNA Registry</h2>
-        <p class="text-sm text-slate-500">Access the Louisiana CNA registry workflow.</p>
-      </a>
+    <a href="account.html" class="block bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition">
+      <div class="w-12 h-12 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center text-xl mb-4">👤</div>
+      <h2 class="text-lg font-semibold text-slate-900 mb-2">My Account</h2>
+      <p class="text-sm text-slate-500">Manage your account.</p>
+    </a>
 
-      <a href="oig.html" class="block bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition">
-        <div class="w-12 h-12 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center text-xl mb-4">🔎</div>
-        <h2 class="text-lg font-semibold text-slate-900 mb-2">OIG Exclusion</h2>
-        <p class="text-sm text-slate-500">Open the exclusion screening area.</p>
-      </a>
+    <a href="support.html" class="block bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition">
+      <div class="w-12 h-12 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center text-xl mb-4">💬</div>
+      <h2 class="text-lg font-semibold text-slate-900 mb-2">Support</h2>
+      <p class="text-sm text-slate-500">Get help if needed.</p>
+    </a>
 
-      <a href="account.html" class="block bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition">
-        <div class="w-12 h-12 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center text-xl mb-4">👤</div>
-        <h2 class="text-lg font-semibold text-slate-900 mb-2">My Account</h2>
-        <p class="text-sm text-slate-500">Manage your member access and account details.</p>
-      </a>
+    <div class="bg-slate-900 text-white rounded-2xl p-6 shadow-sm">
+      <p class="text-xs uppercase tracking-[0.25em] text-slate-400 mb-3">WorkforceComply</p>
+      <h2 class="text-lg font-semibold mb-2">Documentation Support</h2>
+      <p class="text-sm text-slate-300">
+        This platform supports healthcare HR workflows. Final review remains your responsibility.
+      </p>
+    </div>
 
-      <a href="support.html" class="block bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition">
-        <div class="w-12 h-12 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center text-xl mb-4">💬</div>
-        <h2 class="text-lg font-semibold text-slate-900 mb-2">Support</h2>
-        <p class="text-sm text-slate-500">Get help if you run into login or tool issues.</p>
-      </a>
+  </section>
+</main>
 
-      <div class="bg-slate-900 text-white rounded-2xl p-6 shadow-sm">
-        <p class="text-xs uppercase tracking-[0.25em] text-slate-400 mb-3">WorkforceComply</p>
-        <h2 class="text-lg font-semibold mb-2">Documentation Support</h2>
-        <p class="text-sm text-slate-300">
-          This platform supports healthcare HR documentation workflows. Final review remains your responsibility.
-        </p>
-      </div>
+<footer class="bg-white py-8 px-6 border-t border-slate-200 text-center">
+  <p class="text-xs text-slate-400 uppercase tracking-widest">© 2026 WorkforceComply</p>
+</footer>
 
-    </section>
-  </main>
-
-  <footer class="bg-white py-8 px-6 border-t border-slate-200 text-center">
-    <p class="text-xs text-slate-400 uppercase tracking-widest">© 2026 WorkforceComply. Documentation support only.</p>
-  </footer>
-
-  <script
-    src="https://static.memberstack.com/scripts/v1/memberstack.js"
-    data-memberstack-app="app_cmnhnat7r001d0susf7cy5mlo"
-    defer
-  ></script>
-
-  <script>
-    let memberstack = null;
-    let memberData = null;
-    let initError = null;
-
-    async function waitForMemberstack(maxWaitMs = 10000) {
-      const start = Date.now();
-
-      while (!window.$memberstackDom) {
-        if (Date.now() - start > maxWaitMs) {
-          throw new Error('Memberstack script did not load. Check app settings or domain settings.');
-        }
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-
-      return window.$memberstackDom;
-    }
-
-    window.addEventListener('load', async () => {
-      try {
-        memberstack = await waitForMemberstack();
-
-        const { data: member } = await memberstack.getCurrentMember();
-
-        if (member) {
-          memberData = member;
-          showDashboard();
-        } else {
-          showGate();
-        }
-      } catch (e) {
-        initError = e;
-        console.error('INIT ERROR:', e);
-        showGate();
-
-        const err = document.getElementById('gate-error');
-        err.textContent = e.message || 'Unable to load Memberstack.';
-        err.classList.remove('hidden');
-      }
-    });
-
-    function showGate() {
-      document.getElementById('gate').style.display = 'flex';
-    }
-
-    function showDashboard() {
-      document.getElementById('gate').style.display = 'none';
-
-      const email =
-        memberData?.auth?.email ||
-        memberData?.email ||
-        'Member';
-
-      document.getElementById('member-name').textContent = email;
-      document.getElementById('member-email-display').textContent = email;
-    }
-
-    async function doLogin() {
-      const email = document.getElementById('login-email').value.trim();
-      const password = document.getElementById('login-password').value;
-      const err = document.getElementById('gate-error');
-
-      err.classList.add('hidden');
-      err.textContent = '';
-
-      if (!email || !password) {
-        err.textContent = 'Enter email and password.';
-        err.classList.remove('hidden');
-        return;
-      }
-
-      if (!memberstack) {
-        err.textContent = initError?.message || 'Memberstack not ready.';
-        err.classList.remove('hidden');
-        return;
-      }
-
-      try {
-        await memberstack.loginMemberEmailPassword({ email, password });
-
-        const { data: member } = await memberstack.getCurrentMember();
-        memberData = member;
-
-        if (!memberData) {
-          throw new Error('Login failed.');
-        }
-
-        showDashboard();
-      } catch (e) {
-        console.error('LOGIN ERROR:', e);
-        err.textContent = e.message || 'Login failed.';
-        err.classList.remove('hidden');
-      }
-    }
-
-    async function doLogout() {
-      if (!memberstack) return;
-
-      try {
-        await memberstack.logout();
-        window.location.href = 'index.html';
-      } catch (e) {
-        console.error('LOGOUT ERROR:', e);
-      }
-    }
-
-    document.addEventListener('keydown', (e) => {
-      const gateVisible = document.getElementById('gate').style.display !== 'none';
-      if (e.key === 'Enter' && gateVisible) {
-        doLogin();
-      }
-    });
-  </script>
 </body>
 </html>
