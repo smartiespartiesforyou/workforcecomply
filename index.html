@@ -116,17 +116,5 @@ body { font-family: 'Inter', sans-serif; }
   </p>
 </footer>
 
-<!-- 🔥 THIS IS THE FIX -->
-<script>
-document.addEventListener("DOMContentLoaded", async () => {
-  if (window.$memberstackDom) {
-    const { data: member } = await window.$memberstackDom.getCurrentMember();
-    if (member) {
-      window.location.href = "/dashboard.html";
-    }
-  }
-});
-</script>
-
 </body>
 </html>
