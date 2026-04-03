@@ -47,40 +47,30 @@ body { font-family: 'Inter', sans-serif; }
     </div>
 
     <ul class="space-y-3 text-sm mb-8 text-slate-700">
-      <li>✔ CNA Registry</li>
-      <li>✔ OIG Checks</li>
-      <li>✔ LDH Adverse</li>
+      <li>✔ LA CNA Registry Lookups</li>
+      <li>✔ OIG Exclusion Checks</li>
+      <li>✔ LDH Adverse Actions</li>
       <li>✔ PDF Export</li>
     </ul>
 
-    <!-- FIXED BUTTON -->
-    <button id="checkoutBtn"
-      class="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-lg">
+    <a
+      id="checkoutBtn"
+      href="javascript:void(0);"
+      data-ms-action="price:add"
+      data-ms-price:add="prc_workforcecomply-essential-d4220apj"
+      class="block w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition text-center text-lg"
+    >
       Get Started
-    </button>
+    </a>
 
   </div>
 </section>
 
-<footer class="text-center py-10 text-sm text-slate-500">
-  AP Management
+<footer class="text-center py-10">
+  <p class="text-[11px] text-slate-500 mb-3">
+    ProjectorFirst and WorkforceComply are products operated by AP Management.
+  </p>
 </footer>
-
-<!-- 🔥 THIS IS THE FIX -->
-<script>
-document.getElementById("checkoutBtn").addEventListener("click", async () => {
-  const ms = window.$memberstackDom;
-
-  if (!ms) {
-    alert("System loading... click again.");
-    return;
-  }
-
-  await ms.purchasePlansWithCheckout({
-    priceId: "prc_workforcecomply-essential-d4220apj"
-  });
-});
-</script>
 
 </body>
 </html>
