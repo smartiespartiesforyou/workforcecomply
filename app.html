@@ -14,6 +14,12 @@
 
 <script src="https://cdn.tailwindcss.com"></script>
 
+<style>
+  [data-ms-content] {
+    display: none;
+  }
+</style>
+
 </head>
 
 <body class="bg-gray-50 text-slate-900">
@@ -30,11 +36,12 @@
 
         <input id="fileInput" type="file" class="mb-4 w-full border p-2 rounded">
 
-        <button onclick="runChecks()"
+        <button id="runBtn" onclick="runChecks()"
             class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded w-full">
             Run Checks
         </button>
 
+        <div id="statusBox" class="mt-4 text-sm text-left text-slate-700"></div>
         <div id="result" class="mt-6 text-left text-sm text-slate-700"></div>
 
     </div>
@@ -61,11 +68,21 @@
 <script>
 async function runChecks() {
     const file = document.getElementById("fileInput").files[0];
+    const runBtn = document.getElementById("runBtn");
+    const statusBox = document.getElementById("statusBox");
+    const resultBox = document.getElementById("result");
+
+    resultBox.innerHTML = "";
+    statusBox.innerHTML = "";
 
     if (!file) {
-        alert("Please upload a file first.");
+        statusBox.innerHTML = '<p class="text-red-600">Please upload a file first.</p>';
         return;
     }
+
+    runBtn.disabled = true;
+    runBtn.textContent = "Running...";
+    statusBox.innerHTML = '<p class="text-blue-600">Uploading file and starting checks...</p>';
 
     const formData = new FormData();
     formData.append("file", file);
@@ -76,25 +93,39 @@ async function runChecks() {
             body: formData
         });
 
-        const data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(data.error || "Something went wrong");
+        let data;
+        try {
+            data = await response.json();
+        } catch {
+            throw new Error("Backend did not return valid JSON.");
         }
 
-        document.getElementById("result").innerHTML = `
+        if (!response.ok) {
+            throw new Error(data.error || "Something went wrong while processing the file.");
+        }
+
+        statusBox.innerHTML = '<p class="text-green-600">Checks completed successfully.</p>';
+
+        resultBox.innerHTML = `
             <p><strong>Total:</strong> ${data.summary.total_employees}</p>
             <p><strong>Clear:</strong> ${data.summary.clear_count}</p>
             <p><strong>Flagged:</strong> ${data.summary.attention_needed}</p>
             <br>
-            <a href="${data.downloads.combined_pdf_url}" target="_blank"
-               class="text-blue-600 underline">
+            <a href="${data.downloads.combined_pdf_url}" target="_blank" class="text-blue-600 underline block mb-2">
                Download Combined PDF
             </a>
+            <a href="${data.downloads.individual_zip_url}" target="_blank" class="text-blue-600 underline block mb-2">
+               Download Individual PDFs ZIP
+            </a>
+            <a href="${data.downloads.results_excel_url}" target="_blank" class="text-blue-600 underline block">
+               Download Results Excel
+            </a>
         `;
-
     } catch (err) {
-        alert("Error: " + err.message);
+        statusBox.innerHTML = `<p class="text-red-600"><strong>Error:</strong> ${err.message}</p>`;
+    } finally {
+        runBtn.disabled = false;
+        runBtn.textContent = "Run Checks";
     }
 }
 </script>
