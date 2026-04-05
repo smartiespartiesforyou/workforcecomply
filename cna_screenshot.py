@@ -28,7 +28,7 @@ def _ensure_session():
         _playwright = sync_playwright().start()
 
     if _browser is None:
-        _browser = _playwright.chromium.launch(headless=False)
+        _browser = _playwright.chromium.launch(headless=True)
 
     if _context is None:
         _context = _browser.new_context(viewport={"width": 1365, "height": 900})
