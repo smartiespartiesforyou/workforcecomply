@@ -29,7 +29,7 @@ def _ensure_session():
 
     if _browser is None:
         _browser = _playwright.chromium.launch(
-            headless=False,
+            headless=True,
             args=[
                 "--disable-blink-features=AutomationControlled",
                 "--disable-dev-shm-usage",
