@@ -1,4 +1,5 @@
-from flask import Flask, render_template, request, send_file
+from flask import Flask, request, send_file, jsonify
+from flask_cors import CORS
 import pandas as pd
 import os
 import re
@@ -11,6 +12,7 @@ from cna_screenshot import capture_cna, close_cna_session
 from adverse_screenshot import capture_adverse, close_adverse_session
 
 app = Flask(__name__)
+CORS(app)
 
 UPLOAD_FOLDER = "uploads"
 RUNS_FOLDER = "runs"
@@ -71,151 +73,170 @@ def merge_pdfs(pdf_paths, output_path):
     return output_path
 
 
-@app.route("/", methods=["GET", "POST"])
-def index():
-    if request.method == "POST":
-        cleanup_old_runs(RUNS_FOLDER)
+@app.route("/", methods=["GET"])
+def home():
+    return jsonify({"status": "ok", "message": "WorkforceComply backend is running"})
 
-        file = request.files.get("file")
-        if not file or file.filename == "":
-            return "No file selected", 400
 
-        run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
-        run_folder = os.path.join(RUNS_FOLDER, run_id)
+@app.route("/api/run-checks", methods=["POST"])
+def run_checks():
+    cleanup_old_runs(RUNS_FOLDER)
 
-        oig_folder = os.path.join(run_folder, "OIG_Report")
-        cna_folder = os.path.join(run_folder, "CNA_Report")
-        adverse_folder = os.path.join(run_folder, "Adverse_Actions_Report")
+    file = request.files.get("file")
+    if not file or file.filename == "":
+        return jsonify({"error": "No file selected"}), 400
 
-        os.makedirs(oig_folder, exist_ok=True)
-        os.makedirs(cna_folder, exist_ok=True)
-        os.makedirs(adverse_folder, exist_ok=True)
+    run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+    run_folder = os.path.join(RUNS_FOLDER, run_id)
 
-        upload_path = os.path.join(UPLOAD_FOLDER, file.filename)
-        file.save(upload_path)
+    oig_folder = os.path.join(run_folder, "OIG_Report")
+    cna_folder = os.path.join(run_folder, "CNA_Report")
+    adverse_folder = os.path.join(run_folder, "Adverse_Actions_Report")
 
-        try:
-            df = pd.read_excel(upload_path)
-        except Exception as e:
-            return f"Could not read Excel file: {e}", 400
+    os.makedirs(oig_folder, exist_ok=True)
+    os.makedirs(cna_folder, exist_ok=True)
+    os.makedirs(adverse_folder, exist_ok=True)
 
-        required_columns = ["First Name", "Last Name", "SSN"]
-        missing = [col for col in required_columns if col not in df.columns]
-        if missing:
-            return f"Missing required column(s): {', '.join(missing)}", 400
+    upload_path = os.path.join(UPLOAD_FOLDER, file.filename)
+    file.save(upload_path)
 
-        summary_lines = []
-        oig_temp_pdf_paths = []
-        cna_temp_pdf_paths = []
-        adverse_temp_pdf_paths = []
+    try:
+        df = pd.read_excel(upload_path)
+    except Exception as e:
+        return jsonify({"error": f"Could not read Excel file: {e}"}), 400
 
-        try:
-            for _, row in df.iterrows():
-                first = safe_text(row["First Name"])
-                last = safe_text(row["Last Name"])
-                full_name = f"{first} {last}".strip()
+    required_columns = ["First Name", "Last Name", "SSN"]
+    missing = [col for col in required_columns if col not in df.columns]
+    if missing:
+        return jsonify({"error": f"Missing required column(s): {', '.join(missing)}"}), 400
 
-                before_oig = snapshot_files(oig_folder)
-                capture_oig(first, last, oig_folder)
-                new_oig_pdf = get_new_file(before_oig, oig_folder)
+    summary_lines = []
+    problem_count = 0
+    clear_count = 0
 
-                if new_oig_pdf:
-                    oig_temp_pdf_paths.append(new_oig_pdf)
-                else:
-                    summary_lines.append(f"{full_name} - REVIEW NEEDED - OIG PROOF MISSING")
-        finally:
-            close_oig_session()
+    oig_temp_pdf_paths = []
+    cna_temp_pdf_paths = []
+    adverse_temp_pdf_paths = []
 
-        try:
-            for _, row in df.iterrows():
-                first = safe_text(row["First Name"])
-                last = safe_text(row["Last Name"])
-                ssn = clean_ssn(row["SSN"])
-                full_name = f"{first} {last}".strip()
+    try:
+        for _, row in df.iterrows():
+            first = safe_text(row["First Name"])
+            last = safe_text(row["Last Name"])
+            full_name = f"{first} {last}".strip()
 
-                if len(ssn) != 9:
-                    summary_lines.append(f"{full_name} - ERROR - INVALID SSN FOR CNA")
-                    continue
+            before_oig = snapshot_files(oig_folder)
+            capture_oig(first, last, oig_folder)
+            new_oig_pdf = get_new_file(before_oig, oig_folder)
 
-                before_cna = snapshot_files(cna_folder)
-                capture_cna(ssn, cna_folder)
-                new_cna_pdf = get_new_file(before_cna, cna_folder)
-
-                if new_cna_pdf:
-                    cna_temp_pdf_paths.append(new_cna_pdf)
-                else:
-                    summary_lines.append(f"{full_name} - REVIEW NEEDED - CNA PROOF MISSING")
-        finally:
-            close_cna_session()
-
-        try:
-            for _, row in df.iterrows():
-                first = safe_text(row["First Name"])
-                last = safe_text(row["Last Name"])
-                ssn = clean_ssn(row["SSN"])
-                full_name = f"{first} {last}".strip()
-
-                before_adverse = snapshot_files(adverse_folder)
-                capture_adverse(first, last, ssn, adverse_folder)
-                new_adverse_pdf = get_new_file(before_adverse, adverse_folder)
-
-                if new_adverse_pdf:
-                    adverse_temp_pdf_paths.append(new_adverse_pdf)
-                else:
-                    summary_lines.append(f"{full_name} - REVIEW NEEDED - ADVERSE PROOF MISSING")
-        finally:
-            close_adverse_session()
-
-        oig_merged_path = os.path.join(oig_folder, "OIG_Merged.pdf")
-        cna_merged_path = os.path.join(cna_folder, "CNA_Merged.pdf")
-        adverse_merged_path = os.path.join(adverse_folder, "Adverse_Actions_Merged.pdf")
-
-        merge_pdfs(oig_temp_pdf_paths, oig_merged_path)
-        merge_pdfs(cna_temp_pdf_paths, cna_merged_path)
-        merge_pdfs(adverse_temp_pdf_paths, adverse_merged_path)
-
-        for pdf in oig_temp_pdf_paths:
-            try:
-                os.remove(pdf)
-            except Exception:
-                pass
-
-        for pdf in cna_temp_pdf_paths:
-            try:
-                os.remove(pdf)
-            except Exception:
-                pass
-
-        for pdf in adverse_temp_pdf_paths:
-            try:
-                os.remove(pdf)
-            except Exception:
-                pass
-
-        summary_path = os.path.join(run_folder, "SUMMARY.txt")
-        with open(summary_path, "w", encoding="utf-8") as f:
-            f.write("WORKFORCECOMPLY SUMMARY\n\n")
-
-            if summary_lines:
-                f.write("REVIEW REQUIRED / ERRORS:\n\n")
-                for line in summary_lines:
-                    f.write(line + "\n")
+            if new_oig_pdf:
+                oig_temp_pdf_paths.append(new_oig_pdf)
             else:
-                f.write("All employees processed successfully.\n")
+                summary_lines.append(f"{full_name} - REVIEW NEEDED - OIG PROOF MISSING")
+    finally:
+        close_oig_session()
 
-        zip_path = os.path.join(run_folder, "output.zip")
-        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
-            if os.path.exists(oig_merged_path):
-                z.write(oig_merged_path, "OIG_Report/OIG_Merged.pdf")
-            if os.path.exists(cna_merged_path):
-                z.write(cna_merged_path, "CNA_Report/CNA_Merged.pdf")
-            if os.path.exists(adverse_merged_path):
-                z.write(adverse_merged_path, "Adverse_Actions_Report/Adverse_Actions_Merged.pdf")
-            z.write(summary_path, "SUMMARY.txt")
+    try:
+        for _, row in df.iterrows():
+            first = safe_text(row["First Name"])
+            last = safe_text(row["Last Name"])
+            ssn = clean_ssn(row["SSN"])
+            full_name = f"{first} {last}".strip()
 
-        return send_file(zip_path, as_attachment=True)
+            if len(ssn) != 9:
+                summary_lines.append(f"{full_name} - ERROR - INVALID SSN FOR CNA")
+                continue
 
-    return render_template("index.html")
+            before_cna = snapshot_files(cna_folder)
+            capture_cna(ssn, cna_folder)
+            new_cna_pdf = get_new_file(before_cna, cna_folder)
+
+            if new_cna_pdf:
+                cna_temp_pdf_paths.append(new_cna_pdf)
+            else:
+                summary_lines.append(f"{full_name} - REVIEW NEEDED - CNA PROOF MISSING")
+    finally:
+        close_cna_session()
+
+    try:
+        for _, row in df.iterrows():
+            first = safe_text(row["First Name"])
+            last = safe_text(row["Last Name"])
+            ssn = clean_ssn(row["SSN"])
+            full_name = f"{first} {last}".strip()
+
+            before_adverse = snapshot_files(adverse_folder)
+            capture_adverse(first, last, ssn, adverse_folder)
+            new_adverse_pdf = get_new_file(before_adverse, adverse_folder)
+
+            if new_adverse_pdf:
+                adverse_temp_pdf_paths.append(new_adverse_pdf)
+            else:
+                summary_lines.append(f"{full_name} - REVIEW NEEDED - ADVERSE PROOF MISSING")
+    finally:
+        close_adverse_session()
+
+    oig_merged_path = os.path.join(oig_folder, "OIG_Merged.pdf")
+    cna_merged_path = os.path.join(cna_folder, "CNA_Merged.pdf")
+    adverse_merged_path = os.path.join(adverse_folder, "Adverse_Actions_Merged.pdf")
+
+    merge_pdfs(oig_temp_pdf_paths, oig_merged_path)
+    merge_pdfs(cna_temp_pdf_paths, cna_merged_path)
+    merge_pdfs(adverse_temp_pdf_paths, adverse_merged_path)
+
+    summary_path = os.path.join(run_folder, "SUMMARY.txt")
+    with open(summary_path, "w", encoding="utf-8") as f:
+        f.write("WORKFORCECOMPLY SUMMARY\n\n")
+
+        if summary_lines:
+            f.write("REVIEW REQUIRED / ERRORS:\n\n")
+            for line in summary_lines:
+                f.write(line + "\n")
+        else:
+            f.write("All employees processed successfully.\n")
+
+    zip_path = os.path.join(run_folder, "output.zip")
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
+        if os.path.exists(oig_merged_path):
+            z.write(oig_merged_path, "OIG_Report/OIG_Merged.pdf")
+        if os.path.exists(cna_merged_path):
+            z.write(cna_merged_path, "CNA_Report/CNA_Merged.pdf")
+        if os.path.exists(adverse_merged_path):
+            z.write(adverse_merged_path, "Adverse_Actions_Report/Adverse_Actions_Merged.pdf")
+        z.write(summary_path, "SUMMARY.txt")
+
+    total_employees = len(df)
+    problem_count = len(summary_lines)
+    clear_count = total_employees - problem_count
+
+    return jsonify({
+        "summary": {
+            "total_employees": total_employees,
+            "clear_count": clear_count,
+            "attention_needed": problem_count
+        },
+        "downloads": {
+            "combined_pdf_url": f"https://workforcecomply-backend.onrender.com/api/download/{run_id}/zip",
+            "individual_zip_url": f"https://workforcecomply-backend.onrender.com/api/download/{run_id}/zip",
+            "results_excel_url": f"https://workforcecomply-backend.onrender.com/api/download/{run_id}/summary"
+        }
+    })
+
+
+@app.route("/api/download/<run_id>/zip", methods=["GET"])
+def download_zip(run_id):
+    zip_path = os.path.join(RUNS_FOLDER, run_id, "output.zip")
+    if not os.path.exists(zip_path):
+        return jsonify({"error": "ZIP file not found"}), 404
+    return send_file(zip_path, as_attachment=True)
+
+
+@app.route("/api/download/<run_id>/summary", methods=["GET"])
+def download_summary(run_id):
+    summary_path = os.path.join(RUNS_FOLDER, run_id, "SUMMARY.txt")
+    if not os.path.exists(summary_path):
+        return jsonify({"error": "Summary file not found"}), 404
+    return send_file(summary_path, as_attachment=True)
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
