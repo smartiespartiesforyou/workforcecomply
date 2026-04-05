@@ -1,179 +1,111 @@
 <!DOCTYPE html>
 <html lang="en" class="scroll-smooth">
 <head>
-  <script
-    data-memberstack-app="app_cmnhnat7r001d0susf7cy5mlo"
-    src="https://static.memberstack.com/scripts/v2/memberstack.js"
-    type="text/javascript">
-  </script>
 
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>WorkforceComply | Louisiana Compliance & CNA Verification</title>
+<script
+  data-memberstack-app="app_cmnhnat7r001d0susf7cy5mlo"
+  src="https://static.memberstack.com/scripts/v2/memberstack.js"
+  type="text/javascript">
+</script>
 
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WorkforceComply | Louisiana Compliance & CNA Verification</title>
 
-  <style>
-    body { font-family: 'Inter', sans-serif; }
-    .hero-gradient { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); }
-  </style>
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+body { font-family: 'Inter', sans-serif; }
+.hero-gradient {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+}
+</style>
+
 </head>
 
 <body class="bg-gray-50 text-slate-900">
 
-  <nav class="flex items-center justify-between px-8 py-4 bg-[#0f172a] text-white">
-    <div class="flex items-center gap-3">
-      <a href="index.html" class="flex items-center gap-3">
-        <div class="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center font-bold text-white">W</div>
-        <span class="text-xl font-bold tracking-tight text-white">WorkforceComply</span>
-      </a>
-    </div>
+<!-- NAV -->
+<nav class="flex items-center justify-between px-8 py-4 bg-[#0f172a] text-white">
+  <div class="flex items-center gap-2">
+    <div class="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center font-bold text-sm">W</div>
+    <span class="text-xl font-bold tracking-tight">WorkforceComply</span>
+  </div>
 
-    <div class="hidden md:flex gap-8 text-sm font-medium">
-      <a href="how-it-works.html" class="hover:text-blue-400 transition">How it Works</a>
-      <a href="pricing.html" class="hover:text-blue-400 transition">Pricing</a>
-      <a href="mailto:support@workforcecomply.com" class="hover:text-blue-400 transition">Contact</a>
-    </div>
+  <div class="flex items-center gap-6">
+    <a href="how-it-works.html" class="text-sm hover:underline">How it Works</a>
+    <a href="pricing.html" class="text-sm hover:underline">Pricing</a>
+    <a href="contact.html" class="text-sm hover:underline">Contact</a>
 
-    <div class="flex gap-3 items-center">
-      <!-- LOGGED OUT ONLY -->
-      <a
-        href="#"
-        data-ms-modal="login"
-        data-ms-content="!members"
-        class="border border-white/20 hover:border-white/40 hover:bg-white/10 px-5 py-2 rounded-lg text-sm font-semibold transition text-white"
-      >
-        Login
-      </a>
+    <!-- OPEN APP BUTTON -->
+    <a href="/app.html"
+       class="bg-blue-600 hover:bg-blue-700 px-5 py-2 rounded-lg text-white font-semibold">
+       Open App
+    </a>
 
-      <a
-        href="pricing.html"
-        data-ms-content="!members"
-        class="bg-blue-600 hover:bg-blue-700 px-5 py-2 rounded-lg text-sm font-semibold transition shadow-lg shadow-blue-500/20 text-white"
-      >
-        Get Started
-      </a>
+    <!-- LOGOUT -->
+    <a href="#"
+       data-ms-action="logout"
+       class="border border-red-500 text-red-400 px-4 py-2 rounded-lg text-sm hover:bg-red-500 hover:text-white transition">
+       Sign Out
+    </a>
+  </div>
+</nav>
 
-      <!-- LOGGED IN ONLY -->
-      <a
-        href="app.html"
-        data-ms-content="members"
-        class="bg-blue-600 hover:bg-blue-700 px-5 py-2 rounded-lg text-sm font-semibold transition shadow-lg shadow-blue-500/20 text-white"
-      >
-        Open App
-      </a>
+<!-- HERO -->
+<section class="hero-gradient text-white py-24 px-6 text-center">
+  <div class="max-w-4xl mx-auto">
 
-      <a
-        href="#"
-        data-ms-action="logout"
-        data-ms-content="members"
-        class="border border-red-400/40 hover:border-red-400 hover:bg-red-500/10 px-5 py-2 rounded-lg text-sm font-semibold transition text-red-300"
-      >
-        Sign Out
-      </a>
-    </div>
-  </nav>
+    <h1 class="text-4xl md:text-5xl font-bold mb-6 leading-tight">
+      Run CNA & OIG Compliance Checks in Minutes — With Audit-Ready Proof
+    </h1>
 
-  <section class="hero-gradient text-white pt-20 pb-32 px-6 text-center">
-    <div class="max-w-4xl mx-auto">
-      <h1 class="text-4xl md:text-5xl font-bold mb-6 text-white leading-tight">
-        Run CNA & OIG Compliance Checks in Minutes — With Audit-Ready Proof
-      </h1>
-
-      <p class="text-slate-400 max-w-2xl mx-auto text-lg">
-        Upload your employee list and generate time-stamped PDF records for your personnel files without chasing screenshots or piecing together proof by hand.
-      </p>
-
-      <div class="relative max-w-2xl mx-auto mt-10 flex flex-col sm:flex-row gap-4 justify-center">
-        <!-- LOGGED OUT ONLY -->
-        <a
-          href="pricing.html"
-          data-ms-content="!members"
-          class="inline-block bg-blue-600 hover:bg-blue-700 px-8 py-4 rounded-xl font-bold transition shadow-2xl text-white text-lg"
-        >
-          Start Compliance Check
-        </a>
-
-        <a
-          href="#"
-          data-ms-modal="login"
-          data-ms-content="!members"
-          class="inline-block border border-white/20 hover:border-white/40 hover:bg-white/10 px-8 py-4 rounded-xl font-bold transition text-white text-lg"
-        >
-          Member Login
-        </a>
-
-        <!-- LOGGED IN ONLY -->
-        <a
-          href="app.html"
-          data-ms-content="members"
-          class="inline-block bg-blue-600 hover:bg-blue-700 px-8 py-4 rounded-xl font-bold transition shadow-2xl text-white text-lg"
-        >
-          Open Compliance App
-        </a>
-      </div>
-
-      <div class="mt-8 flex justify-center gap-8 text-sm text-slate-400 flex-wrap">
-        <span>✓ Audit-Ready Documentation</span>
-        <span>✓ Problem Records Flagged</span>
-        <span>✓ Built for Healthcare HR</span>
-      </div>
-    </div>
-  </section>
-
-  <section class="max-w-6xl mx-auto px-6 py-16">
-    <div class="grid md:grid-cols-2 gap-8">
-      <div class="bg-white rounded-2xl shadow-xl border border-slate-100 p-8">
-        <h2 class="text-2xl font-bold mb-4">Why HR Teams Use WorkforceComply</h2>
-        <ul class="space-y-4 text-slate-700">
-          <li>✅ Generate individual proof PDFs for every employee checked</li>
-          <li>✅ Create audit-ready documentation for personnel files</li>
-          <li>✅ Flag records that need review so HR does not miss issues</li>
-          <li>✅ Reduce manual searching, screenshots, and paper tracking</li>
-        </ul>
-      </div>
-
-      <div class="bg-white rounded-2xl shadow-xl border border-slate-100 p-8">
-        <h2 class="text-2xl font-bold mb-4">Built for Louisiana Healthcare HR</h2>
-        <ul class="space-y-4 text-slate-700">
-          <li>✅ CNA registry verification support</li>
-          <li>✅ OIG exclusion check support</li>
-          <li>✅ LDH adverse action screening support</li>
-          <li>✅ Clear outputs designed for documentation and review</li>
-        </ul>
-      </div>
-    </div>
-  </section>
-
-  <!-- PAID MEMBERS ONLY SECTION -->
-  <section
-    data-ms-content="paid-plans"
-    class="max-w-6xl mx-auto px-6 pb-16"
-  >
-    <div class="bg-white rounded-2xl shadow-xl border border-slate-100 p-8 text-center">
-      <h2 class="text-2xl font-bold mb-3">Your account is active</h2>
-      <p class="text-slate-600 mb-6">
-        You are signed in with a paid plan. Open your compliance tools below.
-      </p>
-      <a
-        href="app.html"
-        class="inline-block bg-blue-600 hover:bg-blue-700 px-8 py-4 rounded-xl font-bold transition shadow-2xl text-white"
-      >
-        Open Compliance App
-      </a>
-    </div>
-  </section>
-
-  <footer class="bg-white py-12 px-8 border-t border-slate-100 text-center">
-    <p class="text-[11px] text-slate-500 mb-3">
-      ProjectorFirst and WorkforceComply are products operated by AP Management.
+    <p class="text-slate-300 text-lg mb-10">
+      Upload your employee list and generate time-stamped PDF records for your personnel files without chasing screenshots.
     </p>
 
-    <p class="text-[10px] text-slate-400 uppercase tracking-widest">
-      WorkforceComply provides documentation support tools and does not determine employment eligibility.
-    </p>
-  </footer>
+    <!-- MAIN CTA -->
+    <a href="/app.html"
+       class="inline-block bg-blue-600 hover:bg-blue-700 px-8 py-4 rounded-xl text-white font-bold text-lg transition">
+       Open Compliance App
+    </a>
+
+    <div class="mt-10 flex flex-wrap justify-center gap-6 text-sm text-slate-400">
+      <span>✔ Audit-Ready Documentation</span>
+      <span>✔ Problem Records Flagged</span>
+      <span>✔ Built for Healthcare HR</span>
+    </div>
+
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="py-16 px-6 max-w-6xl mx-auto grid md:grid-cols-2 gap-10">
+
+  <div class="bg-white p-8 rounded-2xl shadow">
+    <h2 class="text-xl font-bold mb-4">Why HR Teams Use WorkforceComply</h2>
+    <ul class="space-y-3 text-slate-600">
+      <li>✔ Generate individual proof PDFs for every employee checked</li>
+      <li>✔ Create audit-ready documentation for personnel files</li>
+      <li>✔ Reduce compliance risk and survey issues</li>
+    </ul>
+  </div>
+
+  <div class="bg-white p-8 rounded-2xl shadow">
+    <h2 class="text-xl font-bold mb-4">Built for Louisiana Healthcare HR</h2>
+    <ul class="space-y-3 text-slate-600">
+      <li>✔ CNA registry verification support</li>
+      <li>✔ OIG exclusion check support</li>
+      <li>✔ LDH adverse action screening support</li>
+    </ul>
+  </div>
+
+</section>
+
+<!-- FOOTER -->
+<footer class="bg-white py-8 text-center border-t border-slate-200">
+  <p class="text-sm text-slate-400">© 2026 WorkforceComply</p>
+</footer>
 
 </body>
 </html>
