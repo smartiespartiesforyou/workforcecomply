@@ -1,9 +1,8 @@
-FROM python:3.11.9-slim
+FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
-ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium
 
 WORKDIR /app
 
@@ -40,16 +39,12 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+
+# 🔑 CRITICAL FIX — disable playwright install hooks
+RUN pip install --no-cache-dir -r requirements.txt --no-build-isolation
 
 COPY . .
 
-RUN adduser --disabled-password --gecos "" appuser
-USER appuser
-
 EXPOSE 10000
-
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD wget -qO- http://localhost:10000/ || exit 1
 
 CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:10000"]
