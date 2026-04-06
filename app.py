@@ -75,15 +75,34 @@ def merge_pdfs(pdf_paths, output_path):
 
 
 def create_results_excel(df, summary_lines, output_path):
-    results_df = df.copy()
+    flagged_names = set()
+
+    for line in summary_lines:
+        name_part = line.split(" - ")[0].strip()
+        flagged_names.add(name_part)
+
+    flagged_rows = []
+
+    for _, row in df.iterrows():
+        first = safe_text(row["First Name"])
+        last = safe_text(row["Last Name"])
+        full_name = f"{first} {last}".strip()
+
+        if full_name in flagged_names:
+            flagged_rows.append(row)
+
+    if flagged_rows:
+        results_df = pd.DataFrame(flagged_rows)
+    else:
+        results_df = pd.DataFrame(columns=df.columns)
 
     if summary_lines:
         summary_df = pd.DataFrame({"Issues": summary_lines})
     else:
-        summary_df = pd.DataFrame({"Issues": ["All employees processed successfully."]})
+        summary_df = pd.DataFrame({"Issues": ["No issues found."]})
 
     with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
-        results_df.to_excel(writer, index=False, sheet_name="Uploaded Employees")
+        results_df.to_excel(writer, index=False, sheet_name="Flagged Employees")
         summary_df.to_excel(writer, index=False, sheet_name="Summary")
 
 
