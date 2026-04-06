@@ -40,12 +40,11 @@ COPY requirements.txt .
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-# ✅ FIXED PLAYWRIGHT INSTALL (no sudo issues)
-RUN playwright install --with-deps chromium
+# ✅ SAFE PLAYWRIGHT INSTALL
+RUN playwright install chromium
 
 COPY . .
 
 EXPOSE 10000
 
-# Optional but better for production
 CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:10000"]
