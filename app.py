@@ -7,6 +7,7 @@ import zipfile
 import shutil
 from datetime import datetime, timedelta
 from PyPDF2 import PdfMerger
+
 from oig_screenshot import capture_oig, close_oig_session
 from cna_screenshot import capture_cna, close_cna_session
 from adverse_screenshot import capture_adverse, close_adverse_session
@@ -45,22 +46,6 @@ def cleanup_old_runs(folder, days=2):
                 pass
 
 
-def snapshot_files(folder):
-    return {
-        os.path.join(folder, f): os.path.getmtime(os.path.join(folder, f))
-        for f in os.listdir(folder)
-        if f.lower().endswith(".pdf")
-    }
-
-
-def get_new_file(before, folder):
-    after = snapshot_files(folder)
-    new_files = [f for f in after if f not in before]
-    if not new_files:
-        return None
-    return sorted(new_files, key=lambda x: os.path.getmtime(x), reverse=True)[0]
-
-
 def merge_pdfs(pdf_paths, output_path):
     valid_paths = [p for p in pdf_paths if p and os.path.exists(p)]
     if not valid_paths:
@@ -74,27 +59,19 @@ def merge_pdfs(pdf_paths, output_path):
     return output_path
 
 
-def create_results_excel(df, summary_lines, output_path):
-    flagged_names = set()
-
-    for line in summary_lines:
-        name_part = line.split(" - ")[0].strip()
-        flagged_names.add(name_part)
-
-    flagged_rows = []
-
-    for _, row in df.iterrows():
-        first = safe_text(row["First Name"])
-        last = safe_text(row["Last Name"])
-        full_name = f"{first} {last}".strip()
-
-        if full_name in flagged_names:
-            flagged_rows.append(row)
+def create_results_excel(employee_results, output_path):
+    flagged_rows = [e for e in employee_results if e["flagged"]]
 
     if flagged_rows:
         results_df = pd.DataFrame(flagged_rows)
     else:
-        results_df = pd.DataFrame(columns=df.columns)
+        results_df = pd.DataFrame(columns=["First Name", "Last Name", "SSN", "Issues"])
+
+    summary_lines = []
+    for e in employee_results:
+        if e["issues"]:
+            for issue in e["issues"]:
+                summary_lines.append(f"{e['First Name']} {e['Last Name']} - {issue}")
 
     if summary_lines:
         summary_df = pd.DataFrame({"Issues": summary_lines})
@@ -143,127 +120,126 @@ def run_checks():
     if missing:
         return jsonify({"error": f"Missing required column(s): {', '.join(missing)}"}), 400
 
-    summary_lines = []
-    oig_temp_pdf_paths = []
-    cna_temp_pdf_paths = []
-    adverse_temp_pdf_paths = []
+    employee_results = []
+    oig_paths = []
+    cna_paths = []
+    adverse_paths = []
 
     try:
         for _, row in df.iterrows():
             first = safe_text(row["First Name"])
             last = safe_text(row["Last Name"])
-            full_name = f"{first} {last}".strip()
+            ssn_raw = row["SSN"]
+            ssn = clean_ssn(ssn_raw)
 
-            before_oig = snapshot_files(oig_folder)
-            result = capture_oig(first, last, oig_folder)
-            new_oig_pdf = get_new_file(before_oig, oig_folder)
+            employee = {
+                "First Name": first,
+                "Last Name": last,
+                "SSN": ssn,
+                "issues": [],
+                "flagged": False
+            }
 
-            if new_oig_pdf:
-                oig_temp_pdf_paths.append(new_oig_pdf)
+            # OIG
+            oig_result = capture_oig(first, last, oig_folder)
+            oig_pdf = oig_result.get("pdf_path")
+
+            if oig_pdf:
+                oig_paths.append(oig_pdf)
             else:
-                error_text = result.get("error") if isinstance(result, dict) else None
-                if error_text:
-                    summary_lines.append(f"{full_name} - REVIEW NEEDED - OIG ERROR: {error_text}")
+                error = oig_result.get("error")
+                if error:
+                    employee["issues"].append(f"REVIEW NEEDED - OIG ERROR: {error}")
                 else:
-                    summary_lines.append(f"{full_name} - REVIEW NEEDED - OIG PROOF MISSING")
+                    employee["issues"].append("REVIEW NEEDED - OIG PROOF MISSING")
+
+            # CNA
+            if len(ssn) != 9:
+                employee["issues"].append("ERROR - INVALID SSN FOR CNA")
+            else:
+                cna_result = capture_cna(ssn, cna_folder)
+                cna_pdf = cna_result.get("pdf_path")
+
+                if cna_pdf:
+                    cna_paths.append(cna_pdf)
+                else:
+                    error = cna_result.get("error")
+                    if error:
+                        employee["issues"].append(f"REVIEW NEEDED - CNA ERROR: {error}")
+                    else:
+                        employee["issues"].append("REVIEW NEEDED - CNA PROOF MISSING")
+
+            # ADVERSE
+            if len(ssn) != 9:
+                employee["issues"].append("ERROR - INVALID SSN FOR ADVERSE")
+            else:
+                adverse_result = capture_adverse(first, last, ssn, adverse_folder)
+                adverse_pdf = adverse_result.get("pdf_path")
+
+                if adverse_pdf:
+                    adverse_paths.append(adverse_pdf)
+                else:
+                    error = adverse_result.get("error")
+                    if error:
+                        employee["issues"].append(f"REVIEW NEEDED - ADVERSE ERROR: {error}")
+                    else:
+                        employee["issues"].append("REVIEW NEEDED - ADVERSE PROOF MISSING")
+
+            if employee["issues"]:
+                employee["flagged"] = True
+
+            employee_results.append(employee)
+
     finally:
         close_oig_session()
-
-    try:
-        for _, row in df.iterrows():
-            first = safe_text(row["First Name"])
-            last = safe_text(row["Last Name"])
-            ssn = clean_ssn(row["SSN"])
-            full_name = f"{first} {last}".strip()
-
-            if len(ssn) != 9:
-                summary_lines.append(f"{full_name} - ERROR - INVALID SSN FOR CNA")
-                continue
-
-            before_cna = snapshot_files(cna_folder)
-            result = capture_cna(ssn, cna_folder)
-            new_cna_pdf = get_new_file(before_cna, cna_folder)
-
-            if new_cna_pdf:
-                cna_temp_pdf_paths.append(new_cna_pdf)
-            else:
-                error_text = result.get("error") if isinstance(result, dict) else None
-                if error_text:
-                    summary_lines.append(f"{full_name} - REVIEW NEEDED - CNA ERROR: {error_text}")
-                else:
-                    summary_lines.append(f"{full_name} - REVIEW NEEDED - CNA PROOF MISSING")
-    finally:
         close_cna_session()
-
-    try:
-        for _, row in df.iterrows():
-            first = safe_text(row["First Name"])
-            last = safe_text(row["Last Name"])
-            ssn = clean_ssn(row["SSN"])
-            full_name = f"{first} {last}".strip()
-
-            if len(ssn) != 9:
-                summary_lines.append(f"{full_name} - ERROR - INVALID SSN FOR ADVERSE")
-                continue
-
-            before_adverse = snapshot_files(adverse_folder)
-            result = capture_adverse(first, last, ssn, adverse_folder)
-            new_adverse_pdf = get_new_file(before_adverse, adverse_folder)
-
-            if new_adverse_pdf:
-                adverse_temp_pdf_paths.append(new_adverse_pdf)
-            else:
-                error_text = result.get("error") if isinstance(result, dict) else None
-                if error_text:
-                    summary_lines.append(f"{full_name} - REVIEW NEEDED - ADVERSE ERROR: {error_text}")
-                else:
-                    summary_lines.append(f"{full_name} - REVIEW NEEDED - ADVERSE PROOF MISSING")
-    finally:
         close_adverse_session()
 
-    oig_merged_path = os.path.join(oig_folder, "OIG_Merged.pdf")
-    cna_merged_path = os.path.join(cna_folder, "CNA_Merged.pdf")
-    adverse_merged_path = os.path.join(adverse_folder, "Adverse_Actions_Merged.pdf")
+    oig_merged = os.path.join(oig_folder, "OIG_Merged.pdf")
+    cna_merged = os.path.join(cna_folder, "CNA_Merged.pdf")
+    adverse_merged = os.path.join(adverse_folder, "Adverse_Actions_Merged.pdf")
 
-    merge_pdfs(oig_temp_pdf_paths, oig_merged_path)
-    merge_pdfs(cna_temp_pdf_paths, cna_merged_path)
-    merge_pdfs(adverse_temp_pdf_paths, adverse_merged_path)
+    merge_pdfs(oig_paths, oig_merged)
+    merge_pdfs(cna_paths, cna_merged)
+    merge_pdfs(adverse_paths, adverse_merged)
 
     summary_path = os.path.join(run_folder, "SUMMARY.txt")
     with open(summary_path, "w", encoding="utf-8") as f:
         f.write("WORKFORCECOMPLY SUMMARY\n\n")
 
-        if summary_lines:
-            f.write("REVIEW REQUIRED / ERRORS:\n\n")
-            for line in summary_lines:
-                f.write(line + "\n")
-        else:
+        issues_exist = False
+        for e in employee_results:
+            for issue in e["issues"]:
+                issues_exist = True
+                f.write(f"{e['First Name']} {e['Last Name']} - {issue}\n")
+
+        if not issues_exist:
             f.write("All employees processed successfully.\n")
 
     results_excel_path = os.path.join(run_folder, "Results.xlsx")
-    create_results_excel(df, summary_lines, results_excel_path)
+    create_results_excel(employee_results, results_excel_path)
 
     zip_path = os.path.join(run_folder, "output.zip")
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
-        if os.path.exists(oig_merged_path):
-            z.write(oig_merged_path, "OIG_Report/OIG_Merged.pdf")
-        if os.path.exists(cna_merged_path):
-            z.write(cna_merged_path, "CNA_Report/CNA_Merged.pdf")
-        if os.path.exists(adverse_merged_path):
-            z.write(adverse_merged_path, "Adverse_Actions_Report/Adverse_Actions_Merged.pdf")
+        if os.path.exists(oig_merged):
+            z.write(oig_merged, "OIG_Report/OIG_Merged.pdf")
+        if os.path.exists(cna_merged):
+            z.write(cna_merged, "CNA_Report/CNA_Merged.pdf")
+        if os.path.exists(adverse_merged):
+            z.write(adverse_merged, "Adverse_Actions_Report/Adverse_Actions_Merged.pdf")
         if os.path.exists(results_excel_path):
             z.write(results_excel_path, "Results.xlsx")
         z.write(summary_path, "SUMMARY.txt")
 
-    total_employees = len(df)
-    attention_needed = len(summary_lines)
-    clear_count = total_employees - attention_needed
+    total = len(employee_results)
+    flagged = sum(1 for e in employee_results if e["flagged"])
+    clear = total - flagged
 
     return jsonify({
         "summary": {
-            "total_employees": total_employees,
-            "clear_count": clear_count,
-            "attention_needed": attention_needed
+            "total_employees": total,
+            "clear_count": clear,
+            "attention_needed": flagged
         },
         "downloads": {
             "combined_pdf_url": f"{BACKEND_BASE_URL}/api/download/{run_id}/zip",
