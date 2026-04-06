@@ -12,10 +12,11 @@ from cna_screenshot import capture_cna, close_cna_session
 from adverse_screenshot import capture_adverse, close_adverse_session
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 UPLOAD_FOLDER = "uploads"
 RUNS_FOLDER = "runs"
+BACKEND_BASE_URL = "https://workforcecomply-backend-docker.onrender.com"
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(RUNS_FOLDER, exist_ok=True)
@@ -73,6 +74,19 @@ def merge_pdfs(pdf_paths, output_path):
     return output_path
 
 
+def create_results_excel(df, summary_lines, output_path):
+    results_df = df.copy()
+
+    if summary_lines:
+        summary_df = pd.DataFrame({"Issues": summary_lines})
+    else:
+        summary_df = pd.DataFrame({"Issues": ["All employees processed successfully."]})
+
+    with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
+        results_df.to_excel(writer, index=False, sheet_name="Uploaded Employees")
+        summary_df.to_excel(writer, index=False, sheet_name="Summary")
+
+
 @app.route("/", methods=["GET"])
 def home():
     return jsonify({"status": "ok", "message": "WorkforceComply backend is running"})
@@ -97,7 +111,7 @@ def run_checks():
     os.makedirs(cna_folder, exist_ok=True)
     os.makedirs(adverse_folder, exist_ok=True)
 
-    upload_path = os.path.join(UPLOAD_FOLDER, file.filename)
+    upload_path = os.path.join(UPLOAD_FOLDER, f"{run_id}_{file.filename}")
     file.save(upload_path)
 
     try:
@@ -111,9 +125,6 @@ def run_checks():
         return jsonify({"error": f"Missing required column(s): {', '.join(missing)}"}), 400
 
     summary_lines = []
-    problem_count = 0
-    clear_count = 0
-
     oig_temp_pdf_paths = []
     cna_temp_pdf_paths = []
     adverse_temp_pdf_paths = []
@@ -125,13 +136,17 @@ def run_checks():
             full_name = f"{first} {last}".strip()
 
             before_oig = snapshot_files(oig_folder)
-            capture_oig(first, last, oig_folder)
+            result = capture_oig(first, last, oig_folder)
             new_oig_pdf = get_new_file(before_oig, oig_folder)
 
             if new_oig_pdf:
                 oig_temp_pdf_paths.append(new_oig_pdf)
             else:
-                summary_lines.append(f"{full_name} - REVIEW NEEDED - OIG PROOF MISSING")
+                error_text = result.get("error") if isinstance(result, dict) else None
+                if error_text:
+                    summary_lines.append(f"{full_name} - REVIEW NEEDED - OIG ERROR: {error_text}")
+                else:
+                    summary_lines.append(f"{full_name} - REVIEW NEEDED - OIG PROOF MISSING")
     finally:
         close_oig_session()
 
@@ -147,13 +162,17 @@ def run_checks():
                 continue
 
             before_cna = snapshot_files(cna_folder)
-            capture_cna(ssn, cna_folder)
+            result = capture_cna(ssn, cna_folder)
             new_cna_pdf = get_new_file(before_cna, cna_folder)
 
             if new_cna_pdf:
                 cna_temp_pdf_paths.append(new_cna_pdf)
             else:
-                summary_lines.append(f"{full_name} - REVIEW NEEDED - CNA PROOF MISSING")
+                error_text = result.get("error") if isinstance(result, dict) else None
+                if error_text:
+                    summary_lines.append(f"{full_name} - REVIEW NEEDED - CNA ERROR: {error_text}")
+                else:
+                    summary_lines.append(f"{full_name} - REVIEW NEEDED - CNA PROOF MISSING")
     finally:
         close_cna_session()
 
@@ -164,14 +183,22 @@ def run_checks():
             ssn = clean_ssn(row["SSN"])
             full_name = f"{first} {last}".strip()
 
+            if len(ssn) != 9:
+                summary_lines.append(f"{full_name} - ERROR - INVALID SSN FOR ADVERSE")
+                continue
+
             before_adverse = snapshot_files(adverse_folder)
-            capture_adverse(first, last, ssn, adverse_folder)
+            result = capture_adverse(first, last, ssn, adverse_folder)
             new_adverse_pdf = get_new_file(before_adverse, adverse_folder)
 
             if new_adverse_pdf:
                 adverse_temp_pdf_paths.append(new_adverse_pdf)
             else:
-                summary_lines.append(f"{full_name} - REVIEW NEEDED - ADVERSE PROOF MISSING")
+                error_text = result.get("error") if isinstance(result, dict) else None
+                if error_text:
+                    summary_lines.append(f"{full_name} - REVIEW NEEDED - ADVERSE ERROR: {error_text}")
+                else:
+                    summary_lines.append(f"{full_name} - REVIEW NEEDED - ADVERSE PROOF MISSING")
     finally:
         close_adverse_session()
 
@@ -194,6 +221,9 @@ def run_checks():
         else:
             f.write("All employees processed successfully.\n")
 
+    results_excel_path = os.path.join(run_folder, "Results.xlsx")
+    create_results_excel(df, summary_lines, results_excel_path)
+
     zip_path = os.path.join(run_folder, "output.zip")
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
         if os.path.exists(oig_merged_path):
@@ -202,22 +232,24 @@ def run_checks():
             z.write(cna_merged_path, "CNA_Report/CNA_Merged.pdf")
         if os.path.exists(adverse_merged_path):
             z.write(adverse_merged_path, "Adverse_Actions_Report/Adverse_Actions_Merged.pdf")
+        if os.path.exists(results_excel_path):
+            z.write(results_excel_path, "Results.xlsx")
         z.write(summary_path, "SUMMARY.txt")
 
     total_employees = len(df)
-    problem_count = len(summary_lines)
-    clear_count = total_employees - problem_count
+    attention_needed = len(summary_lines)
+    clear_count = total_employees - attention_needed
 
     return jsonify({
         "summary": {
             "total_employees": total_employees,
             "clear_count": clear_count,
-            "attention_needed": problem_count
+            "attention_needed": attention_needed
         },
         "downloads": {
-            "combined_pdf_url": f"https://workforcecomply-backend.onrender.com/api/download/{run_id}/zip",
-            "individual_zip_url": f"https://workforcecomply-backend.onrender.com/api/download/{run_id}/zip",
-            "results_excel_url": f"https://workforcecomply-backend.onrender.com/api/download/{run_id}/summary"
+            "combined_pdf_url": f"{BACKEND_BASE_URL}/api/download/{run_id}/zip",
+            "individual_zip_url": f"{BACKEND_BASE_URL}/api/download/{run_id}/zip",
+            "results_excel_url": f"{BACKEND_BASE_URL}/api/download/{run_id}/results-excel"
         }
     })
 
@@ -236,6 +268,14 @@ def download_summary(run_id):
     if not os.path.exists(summary_path):
         return jsonify({"error": "Summary file not found"}), 404
     return send_file(summary_path, as_attachment=True)
+
+
+@app.route("/api/download/<run_id>/results-excel", methods=["GET"])
+def download_results_excel(run_id):
+    results_excel_path = os.path.join(RUNS_FOLDER, run_id, "Results.xlsx")
+    if not os.path.exists(results_excel_path):
+        return jsonify({"error": "Results Excel file not found"}), 404
+    return send_file(results_excel_path, as_attachment=True)
 
 
 if __name__ == "__main__":
