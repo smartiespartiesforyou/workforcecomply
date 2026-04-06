@@ -34,14 +34,15 @@ RUN apt-get update && apt-get install -y \
     libxrandr2 \
     libxshmfence1 \
     xdg-utils \
+    chromium \
     && rm -rf /var/lib/apt/lists/*
+
+# 👇 THIS LINE STOPS PLAYWRIGHT FROM TRYING TO INSTALL BROWSERS
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 
 COPY requirements.txt .
 
 RUN pip install --no-cache-dir -r requirements.txt
-
-# ✅ SAFE PLAYWRIGHT INSTALL
-RUN playwright install chromium
 
 COPY . .
 
