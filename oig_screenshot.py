@@ -29,92 +29,61 @@ def _ensure_session():
 
     if _browser is None:
         _browser = _playwright.chromium.launch(
+            executable_path="/usr/bin/chromium",
             headless=True,
             args=[
-                "--disable-blink-features=AutomationControlled",
+                "--no-sandbox",
                 "--disable-dev-shm-usage",
-                "--no-first-run",
-                "--no-default-browser-check",
+                "--disable-blink-features=AutomationControlled",
             ],
         )
 
     if _context is None:
         _context = _browser.new_context(
             viewport={"width": 1365, "height": 900},
-            accept_downloads=False,
         )
 
     if _page is None:
         _page = _context.new_page()
         _page.set_default_timeout(12000)
-        _page.set_default_navigation_timeout(20000)
 
-    _go_to_search_page(_page)
     return _page
-
-
-def _go_to_search_page(page):
-    page.goto(OIG_URL, wait_until="domcontentloaded")
-    page.wait_for_selector(LAST_NAME_SELECTOR)
-    page.wait_for_selector(FIRST_NAME_SELECTOR)
-    page.wait_for_selector(SEARCH_BUTTON_SELECTOR)
 
 
 def close_oig_session():
     global _playwright, _browser, _context, _page
 
     try:
-        if _page is not None:
+        if _page:
             _page.close()
-    except Exception:
-        pass
-
-    try:
-        if _context is not None:
+        if _context:
             _context.close()
-    except Exception:
-        pass
-
-    try:
-        if _browser is not None:
+        if _browser:
             _browser.close()
-    except Exception:
-        pass
-
-    try:
-        if _playwright is not None:
+        if _playwright:
             _playwright.stop()
-    except Exception:
+    except:
         pass
 
-    _page = None
-    _context = None
-    _browser = None
     _playwright = None
+    _browser = None
+    _context = None
+    _page = None
 
 
 atexit.register(close_oig_session)
 
 
 def _wait_for_results(page):
-    result_selectors = [
-        "#ctl00_cpExclusions_gvSearchSP",
-        "#ctl00_cpExclusions_lblSPSearchResults",
-        "#ctl00_cpExclusions_pnlSearchSPResults",
-        "text=No Results Were Found",
-        "text=No results were found",
-        "text=Search Results",
-    ]
-
-    for _ in range(32):
-        for selector in result_selectors:
-            try:
-                if page.locator(selector).first.is_visible(timeout=250):
-                    return True
-            except Exception:
-                pass
-        page.wait_for_timeout(250)
-
+    for _ in range(30):
+        try:
+            if page.locator("text=Search Results").first.is_visible(timeout=200):
+                return True
+            if page.locator("text=No Results").first.is_visible(timeout=200):
+                return True
+        except:
+            pass
+        page.wait_for_timeout(200)
     return False
 
 
@@ -133,52 +102,22 @@ def capture_oig(first_name, last_name, save_folder="proofs"):
     page = _ensure_session()
 
     try:
-        # Always start each employee from a clean search page.
-        _go_to_search_page(page)
+        page.goto(OIG_URL, wait_until="domcontentloaded")
 
-        last_box = page.locator(LAST_NAME_SELECTOR)
-        first_box = page.locator(FIRST_NAME_SELECTOR)
-        search_button = page.locator(SEARCH_BUTTON_SELECTOR)
+        page.fill(LAST_NAME_SELECTOR, last_name)
+        page.fill(FIRST_NAME_SELECTOR, first_name)
 
-        last_box.fill("")
-        first_box.fill("")
-
-        last_box.fill(str(last_name).strip())
-        first_box.fill(str(first_name).strip())
-
-        search_button.click()
+        page.click(SEARCH_BUTTON_SELECTOR)
 
         _wait_for_results(page)
 
-        page.emulate_media(media="screen")
         page.pdf(
             path=pdf_path,
             format="Letter",
-            print_background=True,
-            margin={
-                "top": "0.2in",
-                "right": "0.2in",
-                "bottom": "0.2in",
-                "left": "0.2in",
-            },
+            print_background=True
         )
 
-        print("Saved PDF:", pdf_path)
-
-        return {
-            "pdf_path": pdf_path,
-        }
+        return {"pdf_path": pdf_path}
 
     except Exception as e:
-        print("ERROR:", e)
-        return {
-            "pdf_path": None,
-            "error": str(e),
-        }
-
-
-if __name__ == "__main__":
-    try:
-        capture_oig("Floyd", "Holmes")
-    finally:
-        close_oig_session()
+        return {"pdf_path": None, "error": str(e)}
