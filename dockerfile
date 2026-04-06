@@ -39,10 +39,13 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 
 RUN pip install --no-cache-dir -r requirements.txt
-RUN python -m playwright install chromium
+
+# ✅ FIXED PLAYWRIGHT INSTALL (no sudo issues)
+RUN playwright install --with-deps chromium
 
 COPY . .
 
 EXPOSE 10000
 
-CMD ["python", "app.py"]
+# Optional but better for production
+CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:10000"]
