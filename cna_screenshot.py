@@ -2,6 +2,7 @@ import asyncio
 import os
 import re
 from datetime import datetime
+from threading import Thread
 from playwright.async_api import async_playwright
 
 CNA_URL = "https://tlc.dhh.la.gov/"
@@ -104,8 +105,28 @@ async def _capture_cna_async(ssn, save_folder="proofs"):
             await browser.close()
 
 
+def _run_async_in_thread(coro):
+    result = {}
+    error = {}
+
+    def runner():
+        try:
+            result["value"] = asyncio.run(coro)
+        except Exception as e:
+            error["value"] = e
+
+    thread = Thread(target=runner)
+    thread.start()
+    thread.join()
+
+    if "value" in error:
+        raise error["value"]
+
+    return result.get("value")
+
+
 def capture_cna(ssn, save_folder="proofs"):
-    return asyncio.run(_capture_cna_async(ssn, save_folder))
+    return _run_async_in_thread(_capture_cna_async(ssn, save_folder))
 
 
 def close_cna_session():
