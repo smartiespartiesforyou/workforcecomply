@@ -82,16 +82,22 @@ async function runChecks() {
 
     runBtn.disabled = true;
     runBtn.textContent = "Running...";
-    statusBox.innerHTML = '<p class="text-blue-600">Processing... this may take a moment.</p>';
+    statusBox.innerHTML = '<p class="text-blue-600">Processing... this may take several minutes. Please do not close this page.</p>';
 
     const formData = new FormData();
     formData.append("file", file);
 
     try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 300000);
+
         const response = await fetch("https://workforcecomply.onrender.com/api/run-checks", {
             method: "POST",
-            body: formData
+            body: formData,
+            signal: controller.signal
         });
+
+        clearTimeout(timeout);
 
         const text = await response.text();
 
@@ -124,9 +130,12 @@ async function runChecks() {
                Download Results Excel
             </a>
         `;
-
     } catch (err) {
-        statusBox.innerHTML = `<p class="text-red-600"><strong>Error:</strong> ${err.message}</p>`;
+        if (err.name === "AbortError") {
+            statusBox.innerHTML = '<p class="text-red-600"><strong>Error:</strong> The request timed out after 5 minutes.</p>';
+        } else {
+            statusBox.innerHTML = `<p class="text-red-600"><strong>Error:</strong> ${err.message}</p>`;
+        }
     } finally {
         runBtn.disabled = false;
         runBtn.textContent = "Run Checks";
