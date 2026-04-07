@@ -2,6 +2,7 @@ import asyncio
 import os
 import re
 from datetime import datetime
+from threading import Thread
 from playwright.async_api import async_playwright
 
 ADVERSE_URL = "https://adverseactions.ldh.la.gov/SelSearch"
@@ -147,8 +148,28 @@ async def _capture_adverse_async(first_name, last_name, ssn="", save_folder="pro
             await browser.close()
 
 
+def _run_async_in_thread(coro):
+    result = {}
+    error = {}
+
+    def runner():
+        try:
+            result["value"] = asyncio.run(coro)
+        except Exception as e:
+            error["value"] = e
+
+    thread = Thread(target=runner)
+    thread.start()
+    thread.join()
+
+    if "value" in error:
+        raise error["value"]
+
+    return result.get("value")
+
+
 def capture_adverse(first_name, last_name, ssn="", save_folder="proofs"):
-    return asyncio.run(_capture_adverse_async(first_name, last_name, ssn, save_folder))
+    return _run_async_in_thread(_capture_adverse_async(first_name, last_name, ssn, save_folder))
 
 
 def close_adverse_session():
