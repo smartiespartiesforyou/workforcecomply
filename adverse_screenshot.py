@@ -32,25 +32,24 @@ def _ensure_session():
 
     if _browser is None:
         _browser = _playwright.chromium.launch(
+            executable_path="/usr/bin/chromium",
             headless=True,
             args=[
-                "--disable-blink-features=AutomationControlled",
+                "--no-sandbox",
                 "--disable-dev-shm-usage",
-                "--no-first-run",
-                "--no-default-browser-check",
+                "--disable-blink-features=AutomationControlled",
             ],
         )
 
     if _context is None:
-        _context = _browser.new_context(viewport={"width": 1365, "height": 900})
+        _context = _browser.new_context(
+            viewport={"width": 1365, "height": 900},
+        )
 
     if _page is None:
         _page = _context.new_page()
         _page.set_default_timeout(12000)
-        _page.set_default_navigation_timeout(15000)
-        _page.goto(ADVERSE_URL, wait_until="domcontentloaded")
-        _page.wait_for_selector(SSN_SELECTOR)
-        _page.wait_for_selector(SEARCH_BUTTON_SELECTOR)
+        _page.set_default_navigation_timeout(20000)
 
     return _page
 
@@ -59,33 +58,33 @@ def close_adverse_session():
     global _playwright, _browser, _context, _page
 
     try:
-        if _page:
+        if _page is not None:
             _page.close()
     except Exception:
         pass
 
     try:
-        if _context:
+        if _context is not None:
             _context.close()
     except Exception:
         pass
 
     try:
-        if _browser:
+        if _browser is not None:
             _browser.close()
     except Exception:
         pass
 
     try:
-        if _playwright:
+        if _playwright is not None:
             _playwright.stop()
     except Exception:
         pass
 
-    _playwright = None
-    _browser = None
-    _context = None
     _page = None
+    _context = None
+    _browser = None
+    _playwright = None
 
 
 atexit.register(close_adverse_session)
@@ -103,6 +102,7 @@ def _wait_for_results(page):
     for _ in range(32):
         try:
             loading_visible = False
+
             try:
                 loading_visible = page.locator(LOADING_PANEL_SELECTOR).is_visible(timeout=100)
             except Exception:
@@ -149,7 +149,6 @@ def capture_adverse(first_name, last_name, ssn="", save_folder="proofs"):
 
     clean = clean_ssn(ssn)
     if not clean:
-        print("ADVERSE ERROR: Invalid SSN")
         return {"pdf_path": None, "error": "Invalid SSN"}
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
@@ -189,7 +188,6 @@ def capture_adverse(first_name, last_name, ssn="", save_folder="proofs"):
             pass
 
         page.emulate_media(media="screen")
-
         page.pdf(
             path=pdf_path,
             format="Letter",
@@ -202,10 +200,7 @@ def capture_adverse(first_name, last_name, ssn="", save_folder="proofs"):
             },
         )
 
-        print("Saved ADVERSE PDF:", pdf_path)
-
         return {"pdf_path": pdf_path}
 
     except Exception as e:
-        print("ADVERSE ERROR:", e)
         return {"pdf_path": None, "error": str(e)}
