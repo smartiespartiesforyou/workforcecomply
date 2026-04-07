@@ -260,14 +260,20 @@ def run_checks():
 
     zip_path = os.path.join(run_folder, "output.zip")
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
-        if os.path.exists(oig_merged):
-            z.write(oig_merged, "OIG_Report/OIG_Merged.pdf")
-        if os.path.exists(cna_merged):
-            z.write(cna_merged, "CNA_Report/CNA_Merged.pdf")
-        if os.path.exists(adverse_merged):
-            z.write(adverse_merged, "Adverse_Actions_Report/Adverse_Actions_Merged.pdf")
+        for root, dirs, files in os.walk(run_folder):
+            for file_name in files:
+                full_path = os.path.join(root, file_name)
+
+                if os.path.abspath(full_path) == os.path.abspath(zip_path):
+                    continue
+
+                if file_name.lower().endswith(".pdf"):
+                    relative_path = os.path.relpath(full_path, run_folder)
+                    z.write(full_path, relative_path)
+
         if os.path.exists(results_excel_path):
             z.write(results_excel_path, "Results.xlsx")
+
         if os.path.exists(summary_path):
             z.write(summary_path, "SUMMARY.txt")
 
