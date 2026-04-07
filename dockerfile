@@ -1,8 +1,9 @@
-FROM python:3.11-slim
+FROM python:3.11.9-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium
 
 WORKDIR /app
 
@@ -39,12 +40,10 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-
-# 🔑 CRITICAL FIX — disable playwright install hooks
-RUN pip install --no-cache-dir -r requirements.txt --no-build-isolation
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
 EXPOSE 10000
 
-CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:10000"]
+CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:10000", "--worker-class", "sync", "--workers", "1", "--threads", "1", "--timeout", "600"]
