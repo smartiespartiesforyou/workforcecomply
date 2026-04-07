@@ -18,7 +18,7 @@ CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 UPLOAD_FOLDER = "uploads"
 RUNS_FOLDER = "runs"
-BACKEND_BASE_URL = "https://workforcecomply.onrender.com"
+BACKEND_BASE_URL = "https://workforcecomply-backend-docker.onrender.com"
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(RUNS_FOLDER, exist_ok=True)
