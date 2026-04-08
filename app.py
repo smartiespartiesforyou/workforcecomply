@@ -92,6 +92,24 @@ def create_results_excel(employee_results, output_path):
         summary_df.to_excel(writer, index=False, sheet_name="Summary")
 
 
+def build_zip(run_folder, zip_path):
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
+        for root, dirs, files in os.walk(run_folder):
+            for file_name in files:
+                full_path = os.path.join(root, file_name)
+
+                if os.path.abspath(full_path) == os.path.abspath(zip_path):
+                    continue
+
+                if (
+                    file_name.lower().endswith(".pdf")
+                    or file_name.lower().endswith(".xlsx")
+                    or file_name.lower().endswith(".txt")
+                ):
+                    relative_path = os.path.relpath(full_path, run_folder)
+                    z.write(full_path, relative_path)
+
+
 def run_oig_safe(first, last, save_folder):
     return capture_oig(first, last, save_folder)
 
@@ -259,23 +277,7 @@ def run_checks():
     create_results_excel(employee_results, results_excel_path)
 
     zip_path = os.path.join(run_folder, "output.zip")
-    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
-        for root, dirs, files in os.walk(run_folder):
-            for file_name in files:
-                full_path = os.path.join(root, file_name)
-
-                if os.path.abspath(full_path) == os.path.abspath(zip_path):
-                    continue
-
-                if file_name.lower().endswith(".pdf"):
-                    relative_path = os.path.relpath(full_path, run_folder)
-                    z.write(full_path, relative_path)
-
-        if os.path.exists(results_excel_path):
-            z.write(results_excel_path, "Results.xlsx")
-
-        if os.path.exists(summary_path):
-            z.write(summary_path, "SUMMARY.txt")
+    build_zip(run_folder, zip_path)
 
     total = len(employee_results)
     flagged = sum(1 for e in employee_results if e["flagged"])
@@ -297,9 +299,21 @@ def run_checks():
 
 @app.route("/api/download/<run_id>/zip", methods=["GET"])
 def download_zip(run_id):
-    zip_path = os.path.join(RUNS_FOLDER, run_id, "output.zip")
+    run_folder = os.path.join(RUNS_FOLDER, run_id)
+    zip_path = os.path.join(run_folder, "output.zip")
+
+    if not os.path.exists(run_folder):
+        return jsonify({"error": "Run folder not found"}), 404
+
+    if not os.path.exists(zip_path):
+        try:
+            build_zip(run_folder, zip_path)
+        except Exception as e:
+            return jsonify({"error": f"Failed to build ZIP: {str(e)}"}), 500
+
     if not os.path.exists(zip_path):
         return jsonify({"error": "ZIP file not found"}), 404
+
     return send_file(zip_path, as_attachment=True)
 
 
