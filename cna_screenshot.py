@@ -17,6 +17,24 @@ def clean_ssn(value):
     return f"{digits[:3]}-{digits[3:5]}-{digits[5:]}"
 
 
+def classify_cna_result(page_text):
+    text = (page_text or "").lower()
+
+    if "no records" in text or "no record" in text:
+        return "not_found"
+
+    if "expired" in text or "inactive" in text:
+        return "not_active"
+
+    if "active" in text:
+        return "clear"
+
+    if "certificate number" in text or "status" in text:
+        return "review_needed"
+
+    return "review_needed"
+
+
 async def _wait_for_results(page):
     result_selectors = [
         "text=Certificate Number",
@@ -58,7 +76,11 @@ async def _capture_cna_async(ssn, save_folder="proofs"):
 
     clean = clean_ssn(ssn)
     if not clean:
-        return {"pdf_path": None, "error": "Invalid SSN"}
+        return {
+            "pdf_path": None,
+            "error": "Invalid SSN",
+            "cna_result": "invalid_ssn"
+        }
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     pdf_path = os.path.join(save_folder, f"CNA_{clean}_{timestamp}.pdf")
@@ -101,6 +123,9 @@ async def _capture_cna_async(ssn, save_folder="proofs"):
 
             await _wait_for_results(page)
 
+            page_text = await page.content()
+            cna_result = classify_cna_result(page_text)
+
             await page.emulate_media(media="screen")
             await page.pdf(
                 path=pdf_path,
@@ -114,10 +139,17 @@ async def _capture_cna_async(ssn, save_folder="proofs"):
                 },
             )
 
-            return {"pdf_path": pdf_path}
+            return {
+                "pdf_path": pdf_path,
+                "cna_result": cna_result
+            }
 
         except Exception as e:
-            return {"pdf_path": None, "error": str(e)}
+            return {
+                "pdf_path": None,
+                "error": str(e),
+                "cna_result": "error"
+            }
 
         finally:
             await page.close()
