@@ -187,7 +187,7 @@ def run_checks():
     adverse_paths = []
 
     try:
-        with ThreadPoolExecutor(max_workers=2) as executor:
+        with ThreadPoolExecutor(max_workers=3) as executor:
             for _, row in df.iterrows():
                 first = safe_text(row["First Name"])
                 last = safe_text(row["Last Name"])
