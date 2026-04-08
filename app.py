@@ -60,21 +60,55 @@ def merge_pdfs(pdf_paths, output_path):
     return output_path
 
 
+def normalize_status(issue_list, check_name):
+    relevant = [issue for issue in issue_list if check_name in issue.upper()]
+
+    if not relevant:
+        return "Clear"
+
+    text = " | ".join(relevant).upper()
+
+    if "INVALID SSN" in text:
+        return "Invalid SSN"
+    if "MATCH" in text:
+        return "Match Found"
+    if "NOT ACTIVE" in text:
+        return "Not Active"
+    if "PROOF MISSING" in text:
+        return "Proof Missing"
+    if "ERROR" in text:
+        return "Error"
+    if "REVIEW NEEDED" in text:
+        return "Review Needed"
+
+    return "Review Needed"
+
+
 def create_results_excel(employee_results, output_path):
     flagged_rows = []
+
     for e in employee_results:
         if e["flagged"]:
+            oig_status = normalize_status(e["issues"], "OIG")
+            cna_status = normalize_status(e["issues"], "CNA")
+            adverse_status = normalize_status(e["issues"], "ADVERSE")
+
             flagged_rows.append({
                 "First Name": e["First Name"],
                 "Last Name": e["Last Name"],
                 "SSN": e["SSN"],
-                "Issues": " | ".join(e["issues"])
+                "OIG": oig_status,
+                "CNA": cna_status,
+                "Adverse": adverse_status,
+                "Status": "Attention Required"
             })
 
     if flagged_rows:
         results_df = pd.DataFrame(flagged_rows)
     else:
-        results_df = pd.DataFrame(columns=["First Name", "Last Name", "SSN", "Issues"])
+        results_df = pd.DataFrame(columns=[
+            "First Name", "Last Name", "SSN", "OIG", "CNA", "Adverse", "Status"
+        ])
 
     summary_lines = []
     for e in employee_results:
