@@ -78,7 +78,7 @@ def normalize_status(issue_list, check_name):
         return "Proof Missing"
     if "ERROR" in text:
         return "Error"
-    if "REVIEW NEEDED" in text:
+    if "REVIEW" in text:
         return "Review Needed"
 
     return "Review Needed"
@@ -127,9 +127,26 @@ def build_zip(run_folder, zip_path):
                     z.write(full_path, relative_path)
 
 
+def run_oig_safe(first, last, save_folder):
+    return capture_oig(first, last, save_folder)
+
+
+def run_cna_safe(ssn, save_folder):
+    return capture_cna(ssn, save_folder)
+
+
+def run_adverse_safe(first, last, ssn, save_folder):
+    return capture_adverse(first, last, ssn, save_folder)
+
+
 @app.route("/", methods=["GET"])
 def home():
     return jsonify({"status": "ok", "message": "WorkforceComply backend is running"})
+
+
+@app.route("/health", methods=["GET"])
+def health():
+    return jsonify({"status": "ok"})
 
 
 @app.route("/api/run-checks", methods=["POST"])
@@ -137,8 +154,8 @@ def run_checks():
     cleanup_old_runs(RUNS_FOLDER)
 
     file = request.files.get("file")
-    if not file:
-        return jsonify({"error": "No file uploaded"}), 400
+    if not file or file.filename == "":
+        return jsonify({"error": "No file selected"}), 400
 
     run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
     run_folder = os.path.join(RUNS_FOLDER, run_id)
@@ -147,81 +164,144 @@ def run_checks():
     cna_folder = os.path.join(run_folder, "CNA_Report")
     adverse_folder = os.path.join(run_folder, "Adverse_Actions_Report")
 
-    os.makedirs(oig_folder)
-    os.makedirs(cna_folder)
-    os.makedirs(adverse_folder)
+    os.makedirs(oig_folder, exist_ok=True)
+    os.makedirs(cna_folder, exist_ok=True)
+    os.makedirs(adverse_folder, exist_ok=True)
 
-    filepath = os.path.join(UPLOAD_FOLDER, file.filename)
-    file.save(filepath)
+    upload_path = os.path.join(UPLOAD_FOLDER, f"{run_id}_{file.filename}")
+    file.save(upload_path)
 
-    df = pd.read_excel(filepath)
+    try:
+        df = pd.read_excel(upload_path)
+    except Exception as e:
+        return jsonify({"error": f"Could not read Excel file: {e}"}), 400
+
+    required_columns = ["First Name", "Last Name", "SSN"]
+    missing = [col for col in required_columns if col not in df.columns]
+    if missing:
+        return jsonify({"error": f"Missing required column(s): {', '.join(missing)}"}), 400
 
     employee_results = []
-    oig_paths, cna_paths, adverse_paths = [], [], []
+    oig_paths = []
+    cna_paths = []
+    adverse_paths = []
 
-    with ThreadPoolExecutor(max_workers=1) as executor:
-        for _, row in df.iterrows():
-            first = safe_text(row["First Name"])
-            last = safe_text(row["Last Name"])
-            ssn = clean_ssn(row["SSN"])
+    try:
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            for _, row in df.iterrows():
+                first = safe_text(row["First Name"])
+                last = safe_text(row["Last Name"])
+                ssn_raw = row["SSN"]
+                ssn = clean_ssn(ssn_raw)
 
-            employee = {
-                "First Name": first,
-                "Last Name": last,
-                "SSN": ssn,
-                "issues": [],
-                "flagged": False
-            }
+                employee = {
+                    "First Name": first,
+                    "Last Name": last,
+                    "SSN": ssn,
+                    "issues": [],
+                    "flagged": False
+                }
 
-            # OIG
-            oig_result = executor.submit(capture_oig, first, last, oig_folder).result()
-            if oig_result.get("pdf_path"):
-                oig_paths.append(oig_result["pdf_path"])
+                # OIG
+                try:
+                    oig_result = executor.submit(run_oig_safe, first, last, oig_folder).result()
+                    oig_pdf = oig_result.get("pdf_path")
 
-            # CNA
-            if len(ssn) != 9:
-                employee["issues"].append("ERROR - INVALID SSN FOR CNA")
-            else:
-                cna_result = executor.submit(capture_cna, ssn, cna_folder).result()
-                if cna_result.get("pdf_path"):
-                    cna_paths.append(cna_result["pdf_path"])
+                    if oig_pdf:
+                        oig_paths.append(oig_pdf)
+                    else:
+                        error = oig_result.get("error")
+                        if error:
+                            employee["issues"].append(f"REVIEW NEEDED - OIG ERROR: {error}")
+                        else:
+                            employee["issues"].append("REVIEW NEEDED - OIG PROOF MISSING")
+                except Exception as e:
+                    employee["issues"].append(f"REVIEW NEEDED - OIG ERROR: {str(e)}")
 
-            # ADVERSE
-            if len(ssn) != 9:
-                employee["issues"].append("ERROR - INVALID SSN FOR ADVERSE")
-            else:
-                adverse_result = executor.submit(
-                    capture_adverse, first, last, ssn, adverse_folder
-                ).result()
-                if adverse_result.get("pdf_path"):
-                    adverse_paths.append(adverse_result["pdf_path"])
+                # CNA
+                if len(ssn) != 9:
+                    employee["issues"].append("ERROR - INVALID SSN FOR CNA")
+                else:
+                    try:
+                        cna_result = executor.submit(run_cna_safe, ssn, cna_folder).result()
+                        cna_pdf = cna_result.get("pdf_path")
+                        cna_status = cna_result.get("cna_result", "")
 
-            if employee["issues"]:
-                employee["flagged"] = True
+                        if cna_pdf:
+                            cna_paths.append(cna_pdf)
 
-            employee_results.append(employee)
+                        if cna_status == "not_active":
+                            employee["issues"].append("CNA NOT ACTIVE")
+                        elif cna_status == "review_needed":
+                            employee["issues"].append("REVIEW NEEDED - CNA REVIEW")
+                        elif cna_status == "error":
+                            error = cna_result.get("error")
+                            if error:
+                                employee["issues"].append(f"REVIEW NEEDED - CNA ERROR: {error}")
+                            else:
+                                employee["issues"].append("REVIEW NEEDED - CNA ERROR")
+                        # clear and not_found do not get flagged
 
-    close_oig_session()
-    close_cna_session()
-    close_adverse_session()
+                    except Exception as e:
+                        employee["issues"].append(f"REVIEW NEEDED - CNA ERROR: {str(e)}")
 
-    merge_pdfs(oig_paths, os.path.join(oig_folder, "OIG_Merged.pdf"))
-    merge_pdfs(cna_paths, os.path.join(cna_folder, "CNA_Merged.pdf"))
-    merge_pdfs(adverse_paths, os.path.join(adverse_folder, "Adverse_Merged.pdf"))
+                # ADVERSE
+                if len(ssn) != 9:
+                    employee["issues"].append("ERROR - INVALID SSN FOR ADVERSE")
+                else:
+                    try:
+                        adverse_result = executor.submit(
+                            run_adverse_safe,
+                            first,
+                            last,
+                            ssn,
+                            adverse_folder
+                        ).result()
+                        adverse_pdf = adverse_result.get("pdf_path")
 
-    results_excel = os.path.join(run_folder, "Results.xlsx")
-    create_results_excel(employee_results, results_excel)
+                        if adverse_pdf:
+                            adverse_paths.append(adverse_pdf)
+                        else:
+                            error = adverse_result.get("error")
+                            if error:
+                                employee["issues"].append(f"REVIEW NEEDED - ADVERSE ERROR: {error}")
+                            else:
+                                employee["issues"].append("REVIEW NEEDED - ADVERSE PROOF MISSING")
+                    except Exception as e:
+                        employee["issues"].append(f"REVIEW NEEDED - ADVERSE ERROR: {str(e)}")
+
+                if employee["issues"]:
+                    employee["flagged"] = True
+
+                employee_results.append(employee)
+
+    finally:
+        close_oig_session()
+        close_cna_session()
+        close_adverse_session()
+
+    oig_merged = os.path.join(oig_folder, "OIG_Merged.pdf")
+    cna_merged = os.path.join(cna_folder, "CNA_Merged.pdf")
+    adverse_merged = os.path.join(adverse_folder, "Adverse_Actions_Merged.pdf")
+
+    merge_pdfs(oig_paths, oig_merged)
+    merge_pdfs(cna_paths, cna_merged)
+    merge_pdfs(adverse_paths, adverse_merged)
+
+    results_excel_path = os.path.join(run_folder, "Results.xlsx")
+    create_results_excel(employee_results, results_excel_path)
 
     zip_path = os.path.join(run_folder, "output.zip")
     build_zip(run_folder, zip_path)
 
     total = len(employee_results)
-    flagged = sum(e["flagged"] for e in employee_results)
+    flagged = sum(1 for e in employee_results if e["flagged"])
+    clear = total - flagged
 
     return jsonify({
         "summary": {
             "total_employees": total,
-            "clear_count": total - flagged,
+            "clear_count": clear,
             "attention_needed": flagged
         },
         "downloads": {
@@ -232,15 +312,34 @@ def run_checks():
     })
 
 
-@app.route("/api/download/<run_id>/zip")
+@app.route("/api/download/<run_id>/zip", methods=["GET"])
 def download_zip(run_id):
-    return send_file(os.path.join(RUNS_FOLDER, run_id, "output.zip"), as_attachment=True)
+    run_folder = os.path.join(RUNS_FOLDER, run_id)
+    zip_path = os.path.join(run_folder, "output.zip")
+
+    if not os.path.exists(run_folder):
+        return jsonify({"error": "Run folder not found"}), 404
+
+    if not os.path.exists(zip_path):
+        try:
+            build_zip(run_folder, zip_path)
+        except Exception as e:
+            return jsonify({"error": f"Failed to build ZIP: {str(e)}"}), 500
+
+    if not os.path.exists(zip_path):
+        return jsonify({"error": "ZIP file not found"}), 404
+
+    return send_file(zip_path, as_attachment=True)
 
 
-@app.route("/api/download/<run_id>/results-excel")
-def download_excel(run_id):
-    return send_file(os.path.join(RUNS_FOLDER, run_id, "Results.xlsx"), as_attachment=True)
+@app.route("/api/download/<run_id>/results-excel", methods=["GET"])
+def download_results_excel(run_id):
+    results_excel_path = os.path.join(RUNS_FOLDER, run_id, "Results.xlsx")
+    if not os.path.exists(results_excel_path):
+        return jsonify({"error": "Results Excel file not found"}), 404
+    return send_file(results_excel_path, as_attachment=True)
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
