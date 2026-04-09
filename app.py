@@ -85,6 +85,10 @@ def normalize_status(issue_list, check_name):
 
 
 def create_results_excel(employee_results, output_path):
+    from openpyxl import load_workbook
+    from openpyxl.styles import Font, Alignment
+    from openpyxl.utils import get_column_letter
+
     flagged_rows = []
 
     for e in employee_results:
@@ -100,14 +104,41 @@ def create_results_excel(employee_results, output_path):
             })
 
     if flagged_rows:
-        results_df = pd.DataFrame(flagged_rows)
+        df = pd.DataFrame(flagged_rows)
     else:
-        results_df = pd.DataFrame(columns=[
+        df = pd.DataFrame(columns=[
             "First Name", "Last Name", "SSN", "OIG", "CNA", "Adverse", "Status"
         ])
 
-    with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
-        results_df.to_excel(writer, index=False, sheet_name="Flagged Employees")
+    df.to_excel(output_path, index=False)
+
+    wb = load_workbook(output_path)
+    ws = wb.active
+    ws.title = "Flagged Employees"
+
+    for cell in ws[1]:
+        cell.font = Font(bold=True)
+
+    ws.freeze_panes = "A2"
+
+    for row in ws.iter_rows():
+        for cell in row:
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    for col in ws.columns:
+        max_length = 0
+        col_letter = get_column_letter(col[0].column)
+
+        for cell in col:
+            try:
+                if cell.value:
+                    max_length = max(max_length, len(str(cell.value)))
+            except Exception:
+                pass
+
+        ws.column_dimensions[col_letter].width = max_length + 2
+
+    wb.save(output_path)
 
 
 def build_zip(run_folder, zip_path):
