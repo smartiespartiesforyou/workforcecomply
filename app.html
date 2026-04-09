@@ -24,26 +24,75 @@
 
 <body class="bg-gray-50 text-slate-900">
 
-<div data-ms-content="Admin Access" class="min-h-screen flex flex-col items-center justify-center text-center px-6">
+<div data-ms-content="Admin Access" class="min-h-screen flex flex-col items-center justify-center px-6 py-12">
 
-    <h1 class="text-3xl font-bold mb-4">Run Compliance Checks</h1>
+    <div class="w-full max-w-3xl">
+        <h1 class="text-3xl font-bold mb-3 text-center">Run Compliance Checks</h1>
 
-    <p class="text-slate-600 mb-6">
-        Upload your Excel file to run checks.
-    </p>
+        <p class="text-slate-600 mb-8 text-center">
+            Upload your Excel file to run checks and download your audit package.
+        </p>
 
-    <div class="bg-white p-8 rounded-xl shadow-lg max-w-xl w-full">
+        <div class="bg-white p-8 rounded-xl shadow-lg w-full">
+            <label for="fileInput" class="block text-sm font-semibold text-slate-700 mb-2">
+                Upload Excel File
+            </label>
 
-        <input id="fileInput" type="file" class="mb-4 w-full border p-2 rounded">
+            <input
+                id="fileInput"
+                type="file"
+                accept=".xlsx,.xls"
+                class="mb-2 w-full border border-slate-300 p-3 rounded-lg"
+            >
 
-        <button id="runBtn" onclick="runChecks()"
-            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded w-full">
-            Run Checks
-        </button>
+            <div id="fileName" class="text-sm text-slate-500 mb-5">No file selected</div>
 
-        <div id="statusBox" class="mt-4 text-sm text-left text-slate-700"></div>
-        <div id="result" class="mt-6 text-left text-sm text-slate-700"></div>
+            <button
+                id="runBtn"
+                type="button"
+                onclick="runChecks()"
+                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg w-full font-semibold transition"
+            >
+                Run Checks
+            </button>
 
+            <div id="statusBox" class="mt-5 text-sm text-left text-slate-700"></div>
+            <div id="result" class="mt-6 text-left text-sm text-slate-700"></div>
+
+            <div id="downloadSection" class="mt-6 hidden">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <a
+                        id="combinedPdfBtn"
+                        href="#"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="hidden bg-slate-900 hover:bg-slate-800 text-white text-center px-4 py-3 rounded-lg font-semibold transition"
+                    >
+                        Download Combined PDF
+                    </a>
+
+                    <a
+                        id="zipBtn"
+                        href="#"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="hidden bg-blue-600 hover:bg-blue-700 text-white text-center px-4 py-3 rounded-lg font-semibold transition"
+                    >
+                        Download Audit ZIP
+                    </a>
+
+                    <a
+                        id="excelBtn"
+                        href="#"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="hidden bg-emerald-600 hover:bg-emerald-700 text-white text-center px-4 py-3 rounded-lg font-semibold transition"
+                    >
+                        Download Results Excel
+                    </a>
+                </div>
+            </div>
+        </div>
     </div>
 
 </div>
@@ -57,8 +106,9 @@
             You need an active subscription to use WorkforceComply.
         </p>
 
-        <a href="pricing.html"
-           class="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg text-white font-bold">
+        <a
+           href="pricing.html"
+           class="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg text-white font-bold inline-block">
             View Pricing
         </a>
     </div>
@@ -66,28 +116,70 @@
 </div>
 
 <script>
+const fileInput = document.getElementById("fileInput");
+const fileName = document.getElementById("fileName");
+const runBtn = document.getElementById("runBtn");
+const statusBox = document.getElementById("statusBox");
+const resultBox = document.getElementById("result");
+const downloadSection = document.getElementById("downloadSection");
+const combinedPdfBtn = document.getElementById("combinedPdfBtn");
+const zipBtn = document.getElementById("zipBtn");
+const excelBtn = document.getElementById("excelBtn");
+
+fileInput.addEventListener("change", () => {
+    if (fileInput.files.length > 0) {
+        fileName.textContent = fileInput.files[0].name;
+    } else {
+        fileName.textContent = "No file selected";
+    }
+});
+
+function resetDownloads() {
+    downloadSection.classList.add("hidden");
+
+    combinedPdfBtn.classList.add("hidden");
+    zipBtn.classList.add("hidden");
+    excelBtn.classList.add("hidden");
+
+    combinedPdfBtn.href = "#";
+    zipBtn.href = "#";
+    excelBtn.href = "#";
+}
+
+function formatRuntime(ms) {
+    const totalSeconds = ms / 1000;
+
+    if (totalSeconds < 60) {
+        return `${totalSeconds.toFixed(1)} seconds`;
+    }
+
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = (totalSeconds % 60).toFixed(1);
+    return `${minutes} min ${seconds} sec`;
+}
+
 async function runChecks() {
-    const file = document.getElementById("fileInput").files[0];
-    const runBtn = document.getElementById("runBtn");
-    const statusBox = document.getElementById("statusBox");
-    const resultBox = document.getElementById("result");
+    const file = fileInput.files[0];
 
     resultBox.innerHTML = "";
     statusBox.innerHTML = "";
+    resetDownloads();
 
     if (!file) {
-        statusBox.innerHTML = '<p class="text-red-600">Please upload a file first.</p>';
+        statusBox.innerHTML = '<p class="text-red-600 font-medium">Please upload a file first.</p>';
         return;
     }
 
-    console.log("Sending request to backend...");
-
     runBtn.disabled = true;
     runBtn.textContent = "Running...";
-    statusBox.innerHTML = '<p class="text-blue-600">Processing... please wait.</p>';
+    runBtn.classList.add("opacity-60", "cursor-not-allowed");
+
+    statusBox.innerHTML = '<p class="text-blue-600 font-medium">Processing... please wait.</p>';
 
     const formData = new FormData();
     formData.append("file", file);
+
+    const startTime = performance.now();
 
     try {
         const response = await fetch("https://workforcecomply-backend-docker.onrender.com/api/run-checks", {
@@ -97,7 +189,6 @@ async function runChecks() {
         });
 
         const text = await response.text();
-        console.log("RAW RESPONSE:", text);
 
         let data;
         try {
@@ -110,28 +201,66 @@ async function runChecks() {
             throw new Error(data.error || "Processing failed.");
         }
 
-        statusBox.innerHTML = '<p class="text-green-600">Checks completed successfully.</p>';
+        const endTime = performance.now();
+        const runtime = formatRuntime(endTime - startTime);
+
+        statusBox.innerHTML = `
+            <p class="text-green-600 font-medium">Checks completed successfully.</p>
+            <p class="text-slate-600 mt-1">Completed in ${runtime}</p>
+        `;
 
         resultBox.innerHTML = `
-            <p><strong>Total:</strong> ${data.summary.total_employees}</p>
-            <p><strong>Clear:</strong> ${data.summary.clear_count}</p>
-            <p><strong>Flagged:</strong> ${data.summary.attention_needed}</p>
-            <br>
-            <a href="${data.downloads.combined_pdf_url}" target="_blank" class="text-blue-600 underline block mb-2">
-               Download Combined PDF
-            </a>
-            <a href="${data.downloads.individual_zip_url}" target="_blank" class="text-blue-600 underline block mb-2">
-               Download Individual PDFs ZIP
-            </a>
-            <a href="${data.downloads.results_excel_url}" target="_blank" class="text-blue-600 underline block">
-               Download Results Excel
-            </a>
+            <div class="border border-slate-200 rounded-lg p-4 bg-slate-50">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
+                    <div>
+                        <div class="text-xs uppercase tracking-wide text-slate-500">Total</div>
+                        <div class="text-2xl font-bold text-slate-900">${data.summary.total_employees}</div>
+                    </div>
+                    <div>
+                        <div class="text-xs uppercase tracking-wide text-slate-500">Clear</div>
+                        <div class="text-2xl font-bold text-emerald-600">${data.summary.clear_count}</div>
+                    </div>
+                    <div>
+                        <div class="text-xs uppercase tracking-wide text-slate-500">Flagged</div>
+                        <div class="text-2xl font-bold text-red-600">${data.summary.attention_needed}</div>
+                    </div>
+                    <div>
+                        <div class="text-xs uppercase tracking-wide text-slate-500">Runtime</div>
+                        <div class="text-xl font-bold text-slate-900">${runtime}</div>
+                    </div>
+                </div>
+            </div>
         `;
+
+        if (data.downloads.combined_pdf_url) {
+            combinedPdfBtn.href = data.downloads.combined_pdf_url;
+            combinedPdfBtn.classList.remove("hidden");
+        }
+
+        if (data.downloads.individual_zip_url) {
+            zipBtn.href = data.downloads.individual_zip_url;
+            zipBtn.classList.remove("hidden");
+        }
+
+        if (data.downloads.results_excel_url) {
+            excelBtn.href = data.downloads.results_excel_url;
+            excelBtn.classList.remove("hidden");
+        }
+
+        downloadSection.classList.remove("hidden");
+
     } catch (err) {
-        statusBox.innerHTML = `<p class="text-red-600"><strong>Error:</strong> ${err.message}</p>`;
+        const endTime = performance.now();
+        const runtime = formatRuntime(endTime - startTime);
+
+        statusBox.innerHTML = `
+            <p class="text-red-600 font-medium">Error: ${err.message}</p>
+            <p class="text-slate-600 mt-1">Stopped after ${runtime}</p>
+        `;
     } finally {
         runBtn.disabled = false;
         runBtn.textContent = "Run Checks";
+        runBtn.classList.remove("opacity-60", "cursor-not-allowed");
     }
 }
 </script>
