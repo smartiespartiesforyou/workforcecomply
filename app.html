@@ -14,36 +14,31 @@
 
 <script src="https://cdn.tailwindcss.com"></script>
 
-<style>
-  [data-ms-content] { display: none; }
-</style>
-
 </head>
 
 <body class="bg-slate-100 text-slate-900">
 
-<!-- MAIN APP -->
-<div data-ms-content="paid-members" class="min-h-screen px-6 py-10">
+<div class="min-h-screen px-6 py-10">
 
     <div class="max-w-5xl mx-auto">
         <div class="text-center mb-8">
-            <h1 class="text-3xl md:text-4xl font-bold">WorkforceComply</h1>
+            <h1 class="text-3xl font-bold">WorkforceComply</h1>
             <p class="text-slate-600 mt-2">
                 Run compliance checks individually.
             </p>
         </div>
 
-        <div class="bg-white rounded-2xl shadow p-6">
+        <div class="bg-white rounded-xl shadow p-6">
 
             <input id="fileInput" type="file" class="mb-4 w-full border p-3 rounded">
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <button onclick="runChecks('oig')" class="bg-black text-white p-4 rounded">Run OIG</button>
-                <button onclick="runChecks('cna')" class="bg-green-600 text-white p-4 rounded">Run CNA</button>
-                <button onclick="runChecks('adverse')" class="bg-yellow-600 text-white p-4 rounded">Run DSW</button>
+            <div class="grid grid-cols-3 gap-4 mb-6">
+                <button onclick="runChecks('oig')" class="bg-black text-white p-4 rounded">OIG</button>
+                <button onclick="runChecks('cna')" class="bg-green-600 text-white p-4 rounded">CNA</button>
+                <button onclick="runChecks('adverse')" class="bg-yellow-600 text-white p-4 rounded">DSW</button>
             </div>
 
-            <div id="status" class="mb-4 text-sm text-gray-600"></div>
+            <div id="status" class="mb-4 text-gray-600"></div>
 
             <div id="summary" class="hidden mb-4">
                 <p>Total: <span id="total"></span></p>
@@ -58,16 +53,6 @@
             </div>
 
         </div>
-    </div>
-</div>
-
-<!-- NOT PAID -->
-<div data-ms-content="!paid-members" class="min-h-screen flex items-center justify-center">
-
-    <div class="bg-white p-6 rounded shadow text-center">
-        <h2 class="text-xl font-bold mb-3">Access Restricted</h2>
-        <p class="mb-4">You need a subscription.</p>
-        <a href="pricing.html" class="bg-blue-600 text-white px-4 py-2 rounded">View Pricing</a>
     </div>
 
 </div>
