@@ -89,14 +89,13 @@ def normalize_status(issue_list, check_name):
 
 
 def create_results_excel(employee_results, output_path, mode="combined"):
-    from openpyxl import load_workbook
-    from openpyxl.styles import Font, Alignment
-    from openpyxl.utils import get_column_letter
+    import pandas as pd
 
     flagged_rows = []
 
     for e in employee_results:
         if e["flagged"]:
+
             if mode == "oig":
                 flagged_rows.append({
                     "First Name": e["First Name"],
@@ -105,6 +104,7 @@ def create_results_excel(employee_results, output_path, mode="combined"):
                     "OIG": normalize_status(e["issues"], "OIG"),
                     "Status": "Attention Required"
                 })
+
             elif mode == "cna":
                 flagged_rows.append({
                     "First Name": e["First Name"],
@@ -113,15 +113,17 @@ def create_results_excel(employee_results, output_path, mode="combined"):
                     "CNA": normalize_status(e["issues"], "CNA"),
                     "Status": "Attention Required"
                 })
-           elif mode == "adverse":
+
+            elif mode == "adverse":
                 flagged_rows.append({
-                "First Name": e["First Name"],
-                "Last Name": e["Last Name"],
-                "SSN": e["SSN"],
-                "DSW Result": normalize_status(e["issues"], "ADVERSE"),
-                "Issue Details": " | ".join(e["issues"]),
-                "Status": "Attention Required"
-    })
+                    "First Name": e["First Name"],
+                    "Last Name": e["Last Name"],
+                    "SSN": e["SSN"],
+                    "DSW Result": normalize_status(e["issues"], "ADVERSE"),
+                    "Issue Details": " | ".join(e["issues"]),
+                    "Status": "Attention Required"
+                })
+
             else:
                 flagged_rows.append({
                     "First Name": e["First Name"],
@@ -133,56 +135,8 @@ def create_results_excel(employee_results, output_path, mode="combined"):
                     "Status": "Attention Required"
                 })
 
-    if flagged_rows:
-        df = pd.DataFrame(flagged_rows)
-    else:
-        if mode == "oig":
-            df = pd.DataFrame(columns=[
-                "First Name", "Last Name", "SSN", "OIG", "Status"
-            ])
-        elif mode == "cna":
-            df = pd.DataFrame(columns=[
-                "First Name", "Last Name", "SSN", "CNA", "Status"
-            ])
-        elif mode == "adverse":
-            df = pd.DataFrame(columns=[
-                "First Name", "Last Name", "SSN", "Adverse", "Status"
-            ])
-        else:
-            df = pd.DataFrame(columns=[
-                "First Name", "Last Name", "SSN", "OIG", "CNA", "Adverse", "Status"
-            ])
-
+    df = pd.DataFrame(flagged_rows)
     df.to_excel(output_path, index=False)
-
-    wb = load_workbook(output_path)
-    ws = wb.active
-    ws.title = "Flagged Employees"
-
-    for cell in ws[1]:
-        cell.font = Font(bold=True)
-
-    ws.freeze_panes = "A2"
-
-    for row in ws.iter_rows():
-        for cell in row:
-            cell.alignment = Alignment(horizontal="center", vertical="center")
-
-    for col in ws.columns:
-        max_length = 0
-        col_letter = get_column_letter(col[0].column)
-
-        for cell in col:
-            try:
-                if cell.value:
-                    max_length = max(max_length, len(str(cell.value)))
-            except Exception:
-                pass
-
-        ws.column_dimensions[col_letter].width = max_length + 2
-
-    wb.save(output_path)
-
 
 def build_zip(run_folder, zip_path, include_folders):
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
