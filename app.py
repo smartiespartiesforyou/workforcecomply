@@ -20,6 +20,8 @@ UPLOAD_FOLDER = "uploads"
 RUNS_FOLDER = "runs"
 BACKEND_BASE_URL = "https://workforcecomply-backend-docker.onrender.com"
 
+COMBINED_WORKERS = 3
+
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(RUNS_FOLDER, exist_ok=True)
 
@@ -84,7 +86,7 @@ def normalize_status(issue_list, check_name):
     return "Review Needed"
 
 
-def create_results_excel(employee_results, output_path):
+def create_results_excel(employee_results, output_path, mode="combined"):
     from openpyxl import load_workbook
     from openpyxl.styles import Font, Alignment
     from openpyxl.utils import get_column_letter
@@ -93,22 +95,36 @@ def create_results_excel(employee_results, output_path):
 
     for e in employee_results:
         if e["flagged"]:
-            flagged_rows.append({
-                "First Name": e["First Name"],
-                "Last Name": e["Last Name"],
-                "SSN": e["SSN"],
-                "OIG": normalize_status(e["issues"], "OIG"),
-                "CNA": normalize_status(e["issues"], "CNA"),
-                "Adverse": normalize_status(e["issues"], "ADVERSE"),
-                "Status": "Attention Required"
-            })
+            if mode == "oig":
+                flagged_rows.append({
+                    "First Name": e["First Name"],
+                    "Last Name": e["Last Name"],
+                    "SSN": e["SSN"],
+                    "OIG": normalize_status(e["issues"], "OIG"),
+                    "Status": "Attention Required"
+                })
+            else:
+                flagged_rows.append({
+                    "First Name": e["First Name"],
+                    "Last Name": e["Last Name"],
+                    "SSN": e["SSN"],
+                    "OIG": normalize_status(e["issues"], "OIG"),
+                    "CNA": normalize_status(e["issues"], "CNA"),
+                    "Adverse": normalize_status(e["issues"], "ADVERSE"),
+                    "Status": "Attention Required"
+                })
 
     if flagged_rows:
         df = pd.DataFrame(flagged_rows)
     else:
-        df = pd.DataFrame(columns=[
-            "First Name", "Last Name", "SSN", "OIG", "CNA", "Adverse", "Status"
-        ])
+        if mode == "oig":
+            df = pd.DataFrame(columns=[
+                "First Name", "Last Name", "SSN", "OIG", "Status"
+            ])
+        else:
+            df = pd.DataFrame(columns=[
+                "First Name", "Last Name", "SSN", "OIG", "CNA", "Adverse", "Status"
+            ])
 
     df.to_excel(output_path, index=False)
 
@@ -141,19 +157,20 @@ def create_results_excel(employee_results, output_path):
     wb.save(output_path)
 
 
-def build_zip(run_folder, zip_path):
+def build_zip(run_folder, zip_path, include_folders):
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
-        for root, dirs, files in os.walk(run_folder):
-            for file_name in files:
-                full_path = os.path.join(root, file_name)
+        results_path = os.path.join(run_folder, "Results.xlsx")
+        if os.path.exists(results_path):
+            z.write(results_path, "Results.xlsx")
 
-                if os.path.abspath(full_path) == os.path.abspath(zip_path):
-                    continue
+        for folder_name in include_folders:
+            folder_path = os.path.join(run_folder, folder_name)
+            if not os.path.exists(folder_path):
+                continue
 
-                if (
-                    file_name.lower().endswith(".pdf")
-                    or file_name.lower().endswith(".xlsx")
-                ):
+            for root, dirs, files in os.walk(folder_path):
+                for file_name in files:
+                    full_path = os.path.join(root, file_name)
                     relative_path = os.path.relpath(full_path, run_folder)
                     z.write(full_path, relative_path)
 
@@ -170,27 +187,25 @@ def run_adverse_safe(first, last, ssn, save_folder):
     return capture_adverse(first, last, ssn, save_folder)
 
 
-@app.route("/", methods=["GET"])
-def home():
-    return jsonify({"status": "ok", "message": "WorkforceComply backend is running"})
+def prepare_upload(file, run_id):
+    upload_name = os.path.basename(file.filename)
+    upload_path = os.path.join(UPLOAD_FOLDER, f"{run_id}_{upload_name}")
+    file.save(upload_path)
+    return upload_path
 
 
-@app.route("/health", methods=["GET"])
-def health():
-    return jsonify({"status": "ok"})
+def read_input_dataframe(upload_path):
+    df = pd.read_excel(upload_path)
+
+    required_columns = ["First Name", "Last Name", "SSN"]
+    missing = [col for col in required_columns if col not in df.columns]
+    if missing:
+        raise ValueError(f"Missing required column(s): {', '.join(missing)}")
+
+    return df
 
 
-@app.route("/api/run-checks", methods=["POST"])
-def run_checks():
-    cleanup_old_runs(RUNS_FOLDER)
-
-    file = request.files.get("file")
-    if not file or file.filename == "":
-        return jsonify({"error": "No file selected"}), 400
-
-    run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
-    run_folder = os.path.join(RUNS_FOLDER, run_id)
-
+def process_combined_run(df, run_folder):
     oig_folder = os.path.join(run_folder, "OIG_Report")
     cna_folder = os.path.join(run_folder, "CNA_Report")
     adverse_folder = os.path.join(run_folder, "Adverse_Actions_Report")
@@ -199,26 +214,13 @@ def run_checks():
     os.makedirs(cna_folder, exist_ok=True)
     os.makedirs(adverse_folder, exist_ok=True)
 
-    upload_path = os.path.join(UPLOAD_FOLDER, f"{run_id}_{file.filename}")
-    file.save(upload_path)
-
-    try:
-        df = pd.read_excel(upload_path)
-    except Exception as e:
-        return jsonify({"error": f"Could not read Excel file: {e}"}), 400
-
-    required_columns = ["First Name", "Last Name", "SSN"]
-    missing = [col for col in required_columns if col not in df.columns]
-    if missing:
-        return jsonify({"error": f"Missing required column(s): {', '.join(missing)}"}), 400
-
     employee_results = []
     oig_paths = []
     cna_paths = []
     adverse_paths = []
 
     try:
-        with ThreadPoolExecutor(max_workers=3) as executor:
+        with ThreadPoolExecutor(max_workers=COMBINED_WORKERS) as executor:
             for _, row in df.iterrows():
                 first = safe_text(row["First Name"])
                 last = safe_text(row["Last Name"])
@@ -311,20 +313,84 @@ def run_checks():
         close_cna_session()
         close_adverse_session()
 
-    oig_merged = os.path.join(oig_folder, "OIG_Merged.pdf")
-    cna_merged = os.path.join(cna_folder, "CNA_Merged.pdf")
-    adverse_merged = os.path.join(adverse_folder, "Adverse_Actions_Merged.pdf")
-
-    merge_pdfs(oig_paths, oig_merged)
-    merge_pdfs(cna_paths, cna_merged)
-    merge_pdfs(adverse_paths, adverse_merged)
+    merge_pdfs(oig_paths, os.path.join(oig_folder, "OIG_Merged.pdf"))
+    merge_pdfs(cna_paths, os.path.join(cna_folder, "CNA_Merged.pdf"))
+    merge_pdfs(adverse_paths, os.path.join(adverse_folder, "Adverse_Actions_Merged.pdf"))
 
     results_excel_path = os.path.join(run_folder, "Results.xlsx")
-    create_results_excel(employee_results, results_excel_path)
+    create_results_excel(employee_results, results_excel_path, mode="combined")
 
     zip_path = os.path.join(run_folder, "output.zip")
-    build_zip(run_folder, zip_path)
+    build_zip(
+        run_folder,
+        zip_path,
+        include_folders=["OIG_Report", "CNA_Report", "Adverse_Actions_Report"]
+    )
 
+    return employee_results
+
+
+def process_oig_only_run(df, run_folder):
+    oig_folder = os.path.join(run_folder, "OIG_Report")
+    os.makedirs(oig_folder, exist_ok=True)
+
+    employee_results = []
+    oig_paths = []
+
+    try:
+        for _, row in df.iterrows():
+            first = safe_text(row["First Name"])
+            last = safe_text(row["Last Name"])
+            ssn_raw = row["SSN"]
+            ssn = clean_ssn(ssn_raw)
+
+            employee = {
+                "First Name": first,
+                "Last Name": last,
+                "SSN": ssn,
+                "issues": [],
+                "flagged": False
+            }
+
+            try:
+                oig_result = run_oig_safe(first, last, oig_folder)
+                oig_pdf = oig_result.get("pdf_path")
+
+                if oig_pdf:
+                    oig_paths.append(oig_pdf)
+                else:
+                    error = oig_result.get("error")
+                    if error:
+                        employee["issues"].append(f"REVIEW NEEDED - OIG ERROR: {error}")
+                    else:
+                        employee["issues"].append("REVIEW NEEDED - OIG PROOF MISSING")
+            except Exception as e:
+                employee["issues"].append(f"REVIEW NEEDED - OIG ERROR: {str(e)}")
+
+            if employee["issues"]:
+                employee["flagged"] = True
+
+            employee_results.append(employee)
+
+    finally:
+        close_oig_session()
+
+    merge_pdfs(oig_paths, os.path.join(oig_folder, "OIG_Merged.pdf"))
+
+    results_excel_path = os.path.join(run_folder, "Results.xlsx")
+    create_results_excel(employee_results, results_excel_path, mode="oig")
+
+    zip_path = os.path.join(run_folder, "output.zip")
+    build_zip(
+        run_folder,
+        zip_path,
+        include_folders=["OIG_Report"]
+    )
+
+    return employee_results
+
+
+def make_response(run_id, employee_results):
     total = len(employee_results)
     flagged = sum(1 for e in employee_results if e["flagged"])
     clear = total - flagged
@@ -343,6 +409,66 @@ def run_checks():
     })
 
 
+@app.route("/", methods=["GET"])
+def home():
+    return jsonify({"status": "ok", "message": "WorkforceComply backend is running"})
+
+
+@app.route("/health", methods=["GET"])
+def health():
+    return jsonify({"status": "ok"})
+
+
+@app.route("/api/run-checks", methods=["POST"])
+def run_checks():
+    cleanup_old_runs(RUNS_FOLDER)
+
+    file = request.files.get("file")
+    if not file or file.filename == "":
+        return jsonify({"error": "No file selected"}), 400
+
+    run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+    run_folder = os.path.join(RUNS_FOLDER, run_id)
+    os.makedirs(run_folder, exist_ok=True)
+
+    upload_path = prepare_upload(file, run_id)
+
+    try:
+        df = read_input_dataframe(upload_path)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": f"Could not read Excel file: {e}"}), 400
+
+    employee_results = process_combined_run(df, run_folder)
+    return make_response(run_id, employee_results)
+
+
+@app.route("/api/run-oig", methods=["POST"])
+def run_oig_only():
+    cleanup_old_runs(RUNS_FOLDER)
+
+    file = request.files.get("file")
+    if not file or file.filename == "":
+        return jsonify({"error": "No file selected"}), 400
+
+    run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+    run_folder = os.path.join(RUNS_FOLDER, run_id)
+    os.makedirs(run_folder, exist_ok=True)
+
+    upload_path = prepare_upload(file, run_id)
+
+    try:
+        df = read_input_dataframe(upload_path)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": f"Could not read Excel file: {e}"}), 400
+
+    employee_results = process_oig_only_run(df, run_folder)
+    return make_response(run_id, employee_results)
+
+
 @app.route("/api/download/<run_id>/zip", methods=["GET"])
 def download_zip(run_id):
     run_folder = os.path.join(RUNS_FOLDER, run_id)
@@ -350,12 +476,6 @@ def download_zip(run_id):
 
     if not os.path.exists(run_folder):
         return jsonify({"error": "Run folder not found"}), 404
-
-    if not os.path.exists(zip_path):
-        try:
-            build_zip(run_folder, zip_path)
-        except Exception as e:
-            return jsonify({"error": f"Failed to build ZIP: {str(e)}"}), 500
 
     if not os.path.exists(zip_path):
         return jsonify({"error": "ZIP file not found"}), 404
