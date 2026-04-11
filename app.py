@@ -89,13 +89,10 @@ def normalize_status(issue_list, check_name):
 
 
 def create_results_excel(employee_results, output_path, mode="combined"):
-    import pandas as pd
-
     flagged_rows = []
 
     for e in employee_results:
         if e["flagged"]:
-
             if mode == "oig":
                 flagged_rows.append({
                     "First Name": e["First Name"],
@@ -104,7 +101,6 @@ def create_results_excel(employee_results, output_path, mode="combined"):
                     "OIG": normalize_status(e["issues"], "OIG"),
                     "Status": "Attention Required"
                 })
-
             elif mode == "cna":
                 flagged_rows.append({
                     "First Name": e["First Name"],
@@ -113,7 +109,6 @@ def create_results_excel(employee_results, output_path, mode="combined"):
                     "CNA": normalize_status(e["issues"], "CNA"),
                     "Status": "Attention Required"
                 })
-
             elif mode == "adverse":
                 flagged_rows.append({
                     "First Name": e["First Name"],
@@ -123,7 +118,6 @@ def create_results_excel(employee_results, output_path, mode="combined"):
                     "Issue Details": " | ".join(e["issues"]),
                     "Status": "Attention Required"
                 })
-
             else:
                 flagged_rows.append({
                     "First Name": e["First Name"],
@@ -135,32 +129,34 @@ def create_results_excel(employee_results, output_path, mode="combined"):
                     "Status": "Attention Required"
                 })
 
-if flagged_rows:
-    df = pd.DataFrame(flagged_rows)
-else:
-    if mode == "oig":
-        df = pd.DataFrame(columns=[
-            "First Name", "Last Name", "SSN", "OIG", "Status"
-        ])
-    elif mode == "cna":
-        df = pd.DataFrame(columns=[
-            "First Name", "Last Name", "SSN", "CNA", "Status"
-        ])
-    elif mode == "adverse":
-        df = pd.DataFrame(columns=[
-            "First Name", "Last Name", "SSN", "DSW Result", "Issue Details", "Status"
-        ])
+    if flagged_rows:
+        df = pd.DataFrame(flagged_rows)
     else:
-        df = pd.DataFrame(columns=[
-            "First Name", "Last Name", "SSN", "OIG", "CNA", "Adverse", "Status"
-        ])
-df.to_excel(output_path, index=False)
+        if mode == "oig":
+            df = pd.DataFrame(columns=[
+                "First Name", "Last Name", "SSN", "OIG", "Status"
+            ])
+        elif mode == "cna":
+            df = pd.DataFrame(columns=[
+                "First Name", "Last Name", "SSN", "CNA", "Status"
+            ])
+        elif mode == "adverse":
+            df = pd.DataFrame(columns=[
+                "First Name", "Last Name", "SSN", "DSW Result", "Issue Details", "Status"
+            ])
+        else:
+            df = pd.DataFrame(columns=[
+                "First Name", "Last Name", "SSN", "OIG", "CNA", "Adverse", "Status"
+            ])
 
-def build_zip(run_folder, zip_path, include_folders):
+    df.to_excel(output_path, index=False)
+
+
+def build_zip(run_folder, zip_path, include_folders, excel_filename):
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
-        results_path = os.path.join(run_folder, "Results.xlsx")
+        results_path = os.path.join(run_folder, excel_filename)
         if os.path.exists(results_path):
-            z.write(results_path, "Results.xlsx")
+            z.write(results_path, excel_filename)
 
         for folder_name in include_folders:
             folder_path = os.path.join(run_folder, folder_name)
@@ -218,7 +214,7 @@ def process_combined_run(df, run_folder):
     cna_paths = []
     adverse_paths = []
 
-    try:    
+    try:
         def process_employee(row):
             first = safe_text(row["First Name"])
             last = safe_text(row["Last Name"])
@@ -337,7 +333,8 @@ def process_combined_run(df, run_folder):
     build_zip(
         run_folder,
         zip_path,
-        include_folders=["OIG_Report", "CNA_Report", "Adverse_Actions_Report"]
+        include_folders=["OIG_Report", "CNA_Report", "Adverse_Actions_Report"],
+        excel_filename="Results.xlsx"
     )
 
     return employee_results
@@ -394,7 +391,12 @@ def process_oig_only_run(df, run_folder):
     create_results_excel(employee_results, results_excel_path, mode="oig")
 
     zip_path = os.path.join(run_folder, "OIG_Report.zip")
-    build_zip(run_folder, zip_path, include_folders=["OIG_Report"])
+    build_zip(
+        run_folder,
+        zip_path,
+        include_folders=["OIG_Report"],
+        excel_filename="OIG_Results.xlsx"
+    )
 
     return employee_results
 
@@ -460,7 +462,12 @@ def process_cna_only_run(df, run_folder):
     create_results_excel(employee_results, results_excel_path, mode="cna")
 
     zip_path = os.path.join(run_folder, "CNA_Report.zip")
-    build_zip(run_folder, zip_path, include_folders=["CNA_Report"])
+    build_zip(
+        run_folder,
+        zip_path,
+        include_folders=["CNA_Report"],
+        excel_filename="CNA_Results.xlsx"
+    )
 
     return employee_results
 
@@ -534,7 +541,12 @@ def process_adverse_only_run(df, run_folder):
     create_results_excel(employee_results, results_excel_path, mode="adverse")
 
     zip_path = os.path.join(run_folder, "DSW_Report.zip")
-    build_zip(run_folder, zip_path, include_folders=["Adverse_Actions_Report"])
+    build_zip(
+        run_folder,
+        zip_path,
+        include_folders=["Adverse_Actions_Report"],
+        excel_filename="DSW_Results.xlsx"
+    )
 
     return employee_results
 
