@@ -245,105 +245,108 @@ def process_combined_run(df, run_folder):
     cna_paths = []
     adverse_paths = []
 
-    try:
-        with ThreadPoolExecutor(max_workers=COMBINED_WORKERS) as executor:
-            for _, row in df.iterrows():
-                first = safe_text(row["First Name"])
-                last = safe_text(row["Last Name"])
-                ssn_raw = row["SSN"]
-                ssn = clean_ssn(ssn_raw)
+    try:    
+        def process_employee(row):
+            first = safe_text(row["First Name"])
+            last = safe_text(row["Last Name"])
+            ssn_raw = row["SSN"]
+            ssn = clean_ssn(ssn_raw)
 
-                employee = {
-                    "First Name": first,
-                    "Last Name": last,
-                    "SSN": ssn,
-                    "issues": [],
-                    "flagged": False
-                }
+            employee = {
+                "First Name": first,
+                "Last Name": last,
+                "SSN": ssn,
+                "issues": [],
+                "flagged": False
+            }
 
-                try:
-                    oig_result = executor.submit(run_oig_safe, first, last, oig_folder).result()
-                    oig_pdf = oig_result.get("pdf_path")
+            try:
+                oig_result = run_oig_safe(first, last, oig_folder)
+                oig_pdf = oig_result.get("pdf_path")
 
-                    if oig_pdf:
-                        oig_paths.append(oig_pdf)
+                if oig_pdf:
+                    oig_paths.append(oig_pdf)
+                else:
+                    error = oig_result.get("error")
+                    if error:
+                        employee["issues"].append(f"REVIEW NEEDED - OIG ERROR: {error}")
                     else:
-                        error = oig_result.get("error")
+                        employee["issues"].append("REVIEW NEEDED - OIG PROOF MISSING")
+            except Exception as e:
+                employee["issues"].append(f"REVIEW NEEDED - OIG ERROR: {str(e)}")
+
+            if len(ssn) != 9:
+                employee["issues"].append("ERROR - INVALID SSN FOR CNA")
+            else:
+                try:
+                    cna_result = run_cna_safe(ssn, cna_folder)
+                    cna_pdf = cna_result.get("pdf_path")
+                    cna_status = cna_result.get("cna_result", "")
+
+                    if cna_pdf:
+                        cna_paths.append(cna_pdf)
+
+                    if cna_status == "not_active":
+                        employee["issues"].append("CNA NOT ACTIVE")
+                    elif cna_status == "review_needed":
+                        employee["issues"].append("REVIEW NEEDED - CNA REVIEW")
+                    elif cna_status == "error":
+                        error = cna_result.get("error")
                         if error:
-                            employee["issues"].append(f"REVIEW NEEDED - OIG ERROR: {error}")
+                            employee["issues"].append(f"REVIEW NEEDED - CNA ERROR: {error}")
                         else:
-                            employee["issues"].append("REVIEW NEEDED - OIG PROOF MISSING")
+                            employee["issues"].append("REVIEW NEEDED - CNA ERROR")
+
                 except Exception as e:
-                    employee["issues"].append(f"REVIEW NEEDED - OIG ERROR: {str(e)}")
+                    employee["issues"].append(f"REVIEW NEEDED - CNA ERROR: {str(e)}")
 
-                if len(ssn) != 9:
-                    employee["issues"].append("ERROR - INVALID SSN FOR CNA")
-                else:
-                    try:
-                        cna_result = executor.submit(run_cna_safe, ssn, cna_folder).result()
-                        cna_pdf = cna_result.get("pdf_path")
-                        cna_status = cna_result.get("cna_result", "")
+            if len(ssn) != 9:
+                employee["issues"].append("ERROR - INVALID SSN FOR ADVERSE")
+            else:
+                try:
+                    adverse_result = run_adverse_safe(
+                        first,
+                        last,
+                        ssn,
+                        adverse_folder
+                    )
+                    adverse_pdf = adverse_result.get("pdf_path")
 
-                        if cna_pdf:
-                            cna_paths.append(cna_pdf)
+                    if adverse_pdf:
+                        adverse_paths.append(adverse_pdf)
 
-                        if cna_status == "not_active":
-                            employee["issues"].append("CNA NOT ACTIVE")
-                        elif cna_status == "review_needed":
-                            employee["issues"].append("REVIEW NEEDED - CNA REVIEW")
-                        elif cna_status == "error":
-                            error = cna_result.get("error")
-                            if error:
-                                employee["issues"].append(f"REVIEW NEEDED - CNA ERROR: {error}")
-                            else:
-                                employee["issues"].append("REVIEW NEEDED - CNA ERROR")
+                    adverse_status = safe_text(
+                        adverse_result.get("adverse_result", adverse_result.get("status", ""))
+                    ).lower()
 
-                    except Exception as e:
-                        employee["issues"].append(f"REVIEW NEEDED - CNA ERROR: {str(e)}")
+                    if adverse_status in ("match", "found", "review_needed"):
+                        detail = safe_text(adverse_result.get("detail")) or "ADVERSE ACTION FOUND"
+                        employee["issues"].append(f"REVIEW NEEDED - ADVERSE: {detail}")
+                    elif adverse_status == "error":
+                        error = adverse_result.get("error")
+                        if error:
+                            employee["issues"].append(f"REVIEW NEEDED - ADVERSE ERROR: {error}")
+                        else:
+                            employee["issues"].append("REVIEW NEEDED - ADVERSE ERROR")
+                    elif not adverse_pdf:
+                        error = adverse_result.get("error")
+                        if error:
+                            employee["issues"].append(f"REVIEW NEEDED - ADVERSE ERROR: {error}")
+                        else:
+                            employee["issues"].append("REVIEW NEEDED - ADVERSE PROOF MISSING")
 
-                if len(ssn) != 9:
-                    employee["issues"].append("ERROR - INVALID SSN FOR ADVERSE")
-                else:
-                    try:
-                        adverse_result = executor.submit(
-                            run_adverse_safe,
-                            first,
-                            last,
-                            ssn,
-                            adverse_folder
-                        ).result()
-                        adverse_pdf = adverse_result.get("pdf_path")
+                except Exception as e:
+                    employee["issues"].append(f"REVIEW NEEDED - ADVERSE ERROR: {str(e)}")
 
-                        if adverse_pdf:
-                            adverse_paths.append(adverse_pdf)
+            if employee["issues"]:
+                employee["flagged"] = True
 
-                        adverse_status = safe_text(
-                            adverse_result.get("adverse_result", adverse_result.get("status", ""))
-                        ).lower()
+            return employee
 
-                        if adverse_status in ("match", "found", "review_needed"):
-                            detail = safe_text(adverse_result.get("detail")) or "ADVERSE ACTION FOUND"
-                            employee["issues"].append(f"REVIEW NEEDED - ADVERSE: {detail}")
-                        elif adverse_status == "error":
-                            error = adverse_result.get("error")
-                            if error:
-                                employee["issues"].append(f"REVIEW NEEDED - ADVERSE ERROR: {error}")
-                            else:
-                                employee["issues"].append("REVIEW NEEDED - ADVERSE ERROR")
-                        elif not adverse_pdf:
-                            error = adverse_result.get("error")
-                            if error:
-                                employee["issues"].append(f"REVIEW NEEDED - ADVERSE ERROR: {error}")
-                            else:
-                                employee["issues"].append("REVIEW NEEDED - ADVERSE PROOF MISSING")
-
-                    except Exception as e:
-                        employee["issues"].append(f"REVIEW NEEDED - ADVERSE ERROR: {str(e)}")
-
-                if employee["issues"]:
-                    employee["flagged"] = True
-
-                employee_results.append(employee)
+        with ThreadPoolExecutor(max_workers=COMBINED_WORKERS) as executor:
+            employee_results.extend(
+                list(executor.map(process_employee, [row for _, row in df.iterrows()]))
+            )
 
     finally:
         close_oig_session()
