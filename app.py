@@ -135,7 +135,7 @@ def create_results_excel(employee_results, output_path, mode="combined"):
                     "Status": "Attention Required"
                 })
 
-    if flagged_rows:
+if flagged_rows:
     df = pd.DataFrame(flagged_rows)
 else:
     if mode == "oig":
@@ -154,7 +154,6 @@ else:
         df = pd.DataFrame(columns=[
             "First Name", "Last Name", "SSN", "OIG", "CNA", "Adverse", "Status"
         ])
-
 df.to_excel(output_path, index=False)
 
 def build_zip(run_folder, zip_path, include_folders):
