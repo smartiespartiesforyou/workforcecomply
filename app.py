@@ -557,10 +557,10 @@ def process_adverse_only_run(df, run_folder):
 
     merge_pdfs(adverse_paths, os.path.join(adverse_folder, "Adverse_Actions_Merged.pdf"))
 
-    results_excel_path = os.path.join(run_folder, "Results.xlsx")
+    results_excel_path = os.path.join(run_folder, "DSW_Results.xlsx")
     create_results_excel(employee_results, results_excel_path, mode="adverse")
 
-    zip_path = os.path.join(run_folder, "output.zip")
+    zip_path = os.path.join(run_folder, "DSW_Report.zip")
     build_zip(run_folder, zip_path, include_folders=["Adverse_Actions_Report"])
 
     return employee_results
