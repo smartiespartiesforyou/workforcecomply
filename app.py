@@ -711,9 +711,17 @@ def download_zip(run_id):
 
 @app.route("/api/download/<run_id>/results-excel", methods=["GET"])
 def download_results_excel(run_id):
-    results_excel_path = os.path.join(RUNS_FOLDER, run_id, "Results.xlsx")
-    if not os.path.exists(results_excel_path):
+    run_folder = os.path.join(RUNS_FOLDER, run_id)
+    results_excel_path = None
+
+    for f in os.listdir(run_folder):
+        if f.endswith(".xlsx"):
+            results_excel_path = os.path.join(run_folder, f)
+            break
+
+    if not results_excel_path or not os.path.exists(results_excel_path):
         return jsonify({"error": "Results Excel file not found"}), 404
+
     return send_file(results_excel_path, as_attachment=True)
 
 
