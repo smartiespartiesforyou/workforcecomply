@@ -113,14 +113,15 @@ def create_results_excel(employee_results, output_path, mode="combined"):
                     "CNA": normalize_status(e["issues"], "CNA"),
                     "Status": "Attention Required"
                 })
-            elif mode == "adverse":
+           elif mode == "adverse":
                 flagged_rows.append({
-                    "First Name": e["First Name"],
-                    "Last Name": e["Last Name"],
-                    "SSN": e["SSN"],
-                    "Adverse": normalize_status(e["issues"], "ADVERSE"),
-                    "Status": "Attention Required"
-                })
+                "First Name": e["First Name"],
+                "Last Name": e["Last Name"],
+                "SSN": e["SSN"],
+                "DSW Result": normalize_status(e["issues"], "ADVERSE"),
+                "Issue Details": " | ".join(e["issues"]),
+                "Status": "Attention Required"
+    })
             else:
                 flagged_rows.append({
                     "First Name": e["First Name"],
