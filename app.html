@@ -22,355 +22,100 @@
 
 <body class="bg-slate-100 text-slate-900">
 
-<div data-ms-content="Admin Access" class="min-h-screen px-6 py-10">
+<!-- MAIN APP -->
+<div data-ms-content="paid-members" class="min-h-screen px-6 py-10">
 
     <div class="max-w-5xl mx-auto">
         <div class="text-center mb-8">
-            <h1 class="text-3xl md:text-4xl font-bold text-slate-900">WorkforceComply</h1>
-            <p class="text-slate-600 mt-3">
-                Upload your Excel file and run each compliance check separately.
+            <h1 class="text-3xl md:text-4xl font-bold">WorkforceComply</h1>
+            <p class="text-slate-600 mt-2">
+                Run compliance checks individually.
             </p>
         </div>
 
-        <div class="bg-white rounded-2xl shadow-lg border border-slate-200 p-6 md:p-8">
+        <div class="bg-white rounded-2xl shadow p-6">
 
-            <div class="mb-6">
-                <label for="fileInput" class="block text-sm font-semibold text-slate-700 mb-2">
-                    Upload Excel File
-                </label>
+            <input id="fileInput" type="file" class="mb-4 w-full border p-3 rounded">
 
-                <input
-                    id="fileInput"
-                    type="file"
-                    accept=".xlsx,.xls"
-                    class="w-full border border-slate-300 p-3 rounded-xl bg-white"
-                >
-
-                <div id="fileName" class="text-sm text-slate-500 mt-2">No file selected</div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <button onclick="runChecks('oig')" class="bg-black text-white p-4 rounded">Run OIG</button>
+                <button onclick="runChecks('cna')" class="bg-green-600 text-white p-4 rounded">Run CNA</button>
+                <button onclick="runChecks('adverse')" class="bg-yellow-600 text-white p-4 rounded">Run DSW</button>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                <button
-                    id="runOigBtn"
-                    type="button"
-                    onclick="runChecks('oig')"
-                    class="rounded-xl bg-slate-900 hover:bg-slate-800 text-white px-4 py-4 text-left transition shadow-sm"
-                >
-                    <div class="text-base font-bold">Run OIG Only</div>
-                    <div class="text-sm text-slate-300 mt-1">Fast check</div>
-                </button>
+            <div id="status" class="mb-4 text-sm text-gray-600"></div>
 
-                <button
-                    id="runCnaBtn"
-                    type="button"
-                    onclick="runChecks('cna')"
-                    class="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-4 text-left transition shadow-sm"
-                >
-                    <div class="text-base font-bold">Run CNA Only</div>
-                    <div class="text-sm text-emerald-100 mt-1">Fast check</div>
-                </button>
-
-                <button
-                    id="runAdverseBtn"
-                    type="button"
-                    onclick="runChecks('adverse')"
-                    class="rounded-xl bg-amber-600 hover:bg-amber-700 text-white px-4 py-4 text-left transition shadow-sm"
-                >
-                    <div class="text-base font-bold">Run DSW Only</div>
-                    <div class="text-sm text-amber-100 mt-1">Slower check</div>
-                </button>
+            <div id="summary" class="hidden mb-4">
+                <p>Total: <span id="total"></span></p>
+                <p>Clear: <span id="clear"></span></p>
+                <p>Issues: <span id="flagged"></span></p>
+                <p>Runtime: <span id="runtime"></span></p>
             </div>
 
-            <div class="rounded-xl bg-slate-50 border border-slate-200 p-4 mb-6">
-                <p class="text-sm text-slate-700">
-                    Each check runs separately and creates its own ZIP package and Excel file for that specific run.
-                </p>
-            </div>
-
-            <div id="statusCard" class="hidden rounded-2xl border border-slate-200 bg-white p-5 mb-5">
-                <div id="statusBox" class="text-sm text-slate-700"></div>
-            </div>
-
-            <div id="summaryCard" class="hidden rounded-2xl border border-slate-200 bg-slate-50 p-5 mb-5">
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
-                    <div class="bg-white border border-slate-200 rounded-xl p-4">
-                        <div class="text-xs uppercase tracking-wide text-slate-500">Total</div>
-                        <div id="summaryTotal" class="text-2xl font-bold text-slate-900 mt-1">0</div>
-                    </div>
-                    <div class="bg-white border border-slate-200 rounded-xl p-4">
-                        <div class="text-xs uppercase tracking-wide text-slate-500">Clear</div>
-                        <div id="summaryClear" class="text-2xl font-bold text-emerald-600 mt-1">0</div>
-                    </div>
-                    <div class="bg-white border border-slate-200 rounded-xl p-4">
-                        <div id="summaryFlaggedLabel" class="text-xs uppercase tracking-wide text-slate-500">Issues</div>
-                        <div id="summaryFlagged" class="text-2xl font-bold text-red-600 mt-1">0</div>
-                    </div>
-                    <div class="bg-white border border-slate-200 rounded-xl p-4">
-                        <div class="text-xs uppercase tracking-wide text-slate-500">Runtime</div>
-                        <div id="summaryRuntime" class="text-xl font-bold text-slate-900 mt-1">0 sec</div>
-                    </div>
-                </div>
-            </div>
-
-            <div id="downloadSection" class="hidden">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <a
-                        id="zipBtn"
-                        href="#"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="hidden rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-center px-4 py-4 font-semibold transition shadow-sm"
-                    >
-                        Download ZIP
-                    </a>
-
-                    <a
-                        id="excelBtn"
-                        href="#"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="hidden rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-center px-4 py-4 font-semibold transition shadow-sm"
-                    >
-                        Download Excel
-                    </a>
-                </div>
+            <div id="downloads" class="hidden space-y-2">
+                <a id="zip" class="block bg-blue-600 text-white p-3 rounded text-center">Download ZIP</a>
+                <a id="excel" class="block bg-green-700 text-white p-3 rounded text-center">Download Excel</a>
             </div>
 
         </div>
     </div>
-
 </div>
 
-<div data-ms-content="!Admin Access" class="min-h-screen flex items-center justify-center px-6">
+<!-- NOT PAID -->
+<div data-ms-content="!paid-members" class="min-h-screen flex items-center justify-center">
 
-    <div class="bg-white p-8 rounded-2xl shadow-lg text-center max-w-md border border-slate-200">
-        <h2 class="text-2xl font-bold mb-4">Access Restricted</h2>
-
-        <p class="text-slate-600 mb-6">
-            You need an active subscription to use WorkforceComply.
-        </p>
-
-        <a
-           href="pricing.html"
-           class="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-xl text-white font-bold inline-block">
-            View Pricing
-        </a>
+    <div class="bg-white p-6 rounded shadow text-center">
+        <h2 class="text-xl font-bold mb-3">Access Restricted</h2>
+        <p class="mb-4">You need a subscription.</p>
+        <a href="pricing.html" class="bg-blue-600 text-white px-4 py-2 rounded">View Pricing</a>
     </div>
 
 </div>
 
 <script>
-const fileInput = document.getElementById("fileInput");
-const fileName = document.getElementById("fileName");
-const runOigBtn = document.getElementById("runOigBtn");
-const runCnaBtn = document.getElementById("runCnaBtn");
-const runAdverseBtn = document.getElementById("runAdverseBtn");
+async function runChecks(type) {
 
-const statusCard = document.getElementById("statusCard");
-const statusBox = document.getElementById("statusBox");
-
-const summaryCard = document.getElementById("summaryCard");
-const summaryTotal = document.getElementById("summaryTotal");
-const summaryClear = document.getElementById("summaryClear");
-const summaryFlagged = document.getElementById("summaryFlagged");
-const summaryFlaggedLabel = document.getElementById("summaryFlaggedLabel");
-const summaryRuntime = document.getElementById("summaryRuntime");
-
-const downloadSection = document.getElementById("downloadSection");
-const zipBtn = document.getElementById("zipBtn");
-const excelBtn = document.getElementById("excelBtn");
-
-fileInput.addEventListener("change", () => {
-    if (fileInput.files.length > 0) {
-        fileName.textContent = fileInput.files[0].name;
-    } else {
-        fileName.textContent = "No file selected";
-    }
-});
-
-function resetUI() {
-    statusCard.classList.add("hidden");
-    summaryCard.classList.add("hidden");
-    downloadSection.classList.add("hidden");
-
-    statusBox.innerHTML = "";
-
-    zipBtn.classList.add("hidden");
-    excelBtn.classList.add("hidden");
-
-    zipBtn.href = "#";
-    excelBtn.href = "#";
-}
-
-function setButtonsDisabled(isDisabled) {
-    const buttons = [runOigBtn, runCnaBtn, runAdverseBtn];
-
-    buttons.forEach(btn => {
-        btn.disabled = isDisabled;
-        if (isDisabled) {
-            btn.classList.add("opacity-60", "cursor-not-allowed");
-        } else {
-            btn.classList.remove("opacity-60", "cursor-not-allowed");
-        }
-    });
-}
-
-function setRunningButton(mode) {
-    if (mode === "oig") {
-        runOigBtn.innerHTML = '<div class="text-base font-bold">Running OIG...</div><div class="text-sm text-slate-300 mt-1">Please wait</div>';
-    } else if (mode === "cna") {
-        runCnaBtn.innerHTML = '<div class="text-base font-bold">Running CNA...</div><div class="text-sm text-emerald-100 mt-1">Please wait</div>';
-    } else if (mode === "adverse") {
-        runAdverseBtn.innerHTML = '<div class="text-base font-bold">Running DSW...</div><div class="text-sm text-amber-100 mt-1">Please wait</div>';
-    }
-}
-
-function resetButtonLabels() {
-    runOigBtn.innerHTML = '<div class="text-base font-bold">Run OIG Only</div><div class="text-sm text-slate-300 mt-1">Fast check</div>';
-    runCnaBtn.innerHTML = '<div class="text-base font-bold">Run CNA Only</div><div class="text-sm text-emerald-100 mt-1">Fast check</div>';
-    runAdverseBtn.innerHTML = '<div class="text-base font-bold">Run DSW Only</div><div class="text-sm text-amber-100 mt-1">Slower check</div>';
-}
-
-function formatRuntime(ms) {
-    const totalSeconds = ms / 1000;
-
-    if (totalSeconds < 60) {
-        return `${totalSeconds.toFixed(1)} seconds`;
-    }
-
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = (totalSeconds % 60).toFixed(1);
-    return `${minutes} min ${seconds} sec`;
-}
-
-function getEndpoint(mode) {
-    if (mode === "oig") {
-        return "https://workforcecomply-backend-docker.onrender.com/api/run-oig";
-    }
-    if (mode === "cna") {
-        return "https://workforcecomply-backend-docker.onrender.com/api/run-cna";
-    }
-    if (mode === "adverse") {
-        return "https://workforcecomply-backend-docker.onrender.com/api/run-adverse";
-    }
-    return "";
-}
-
-function getRunningMessage(mode) {
-    if (mode === "oig") return "Running OIG check. This should finish quickly.";
-    if (mode === "cna") return "Running CNA check. This should finish quickly.";
-    if (mode === "adverse") return "Running DSW check. This one usually takes longer.";
-    return "Running check...";
-}
-
-function getZipLabel(mode) {
-    if (mode === "oig") return "Download OIG Report";
-    if (mode === "cna") return "Download CNA Report";
-    if (mode === "adverse") return "Download DSW Report";
-    return "Download ZIP";
-}
-
-function getExcelLabel(mode) {
-    if (mode === "oig") return "Download OIG Excel";
-    if (mode === "cna") return "Download CNA Excel";
-    if (mode === "adverse") return "Download DSW Excel";
-    return "Download Excel";
-}
-
-function getFlaggedLabel(mode) {
-    if (mode === "oig") return "OIG Issues";
-    if (mode === "cna") return "CNA Issues";
-    if (mode === "adverse") return "DSW Issues";
-    return "Issues";
-}
-
-async function runChecks(mode) {
-    const file = fileInput.files[0];
-
-    resetUI();
-
+    const file = document.getElementById("fileInput").files[0];
     if (!file) {
-        statusCard.classList.remove("hidden");
-        statusBox.innerHTML = '<p class="text-red-600 font-medium">Please upload a file first.</p>';
+        alert("Upload file first");
         return;
     }
 
-    setButtonsDisabled(true);
-    setRunningButton(mode);
-
-    statusCard.classList.remove("hidden");
-    statusBox.innerHTML = `
-        <p class="text-blue-600 font-semibold">${getRunningMessage(mode)}</p>
-        <p class="text-slate-600 mt-1">Do not close this page while the check is running.</p>
-    `;
+    document.getElementById("status").innerText = "Running...";
+    document.getElementById("summary").classList.add("hidden");
+    document.getElementById("downloads").classList.add("hidden");
 
     const formData = new FormData();
     formData.append("file", file);
 
-    const startTime = performance.now();
-    const endpoint = getEndpoint(mode);
+    const start = performance.now();
 
-    try {
-        const response = await fetch(endpoint, {
-            method: "POST",
-            body: formData,
-            mode: "cors"
-        });
+    let endpoint = "";
+    if (type === "oig") endpoint = "/api/run-oig";
+    if (type === "cna") endpoint = "/api/run-cna";
+    if (type === "adverse") endpoint = "/api/run-adverse";
 
-        const text = await response.text();
+    const res = await fetch("https://workforcecomply-backend-docker.onrender.com" + endpoint, {
+        method: "POST",
+        body: formData
+    });
 
-        let data;
-        try {
-            data = JSON.parse(text);
-        } catch {
-            throw new Error("Backend crashed or returned invalid response.");
-        }
+    const data = await res.json();
 
-        if (!response.ok) {
-            throw new Error(data.error || "Processing failed.");
-        }
+    const end = performance.now();
 
-        const endTime = performance.now();
-        const runtime = formatRuntime(endTime - startTime);
+    document.getElementById("status").innerText = "Complete";
 
-        statusBox.innerHTML = `
-            <p class="text-green-600 font-semibold">Check completed successfully.</p>
-            <p class="text-slate-600 mt-1">Completed in ${runtime}</p>
-        `;
+    document.getElementById("summary").classList.remove("hidden");
+    document.getElementById("total").innerText = data.summary.total_employees;
+    document.getElementById("clear").innerText = data.summary.clear_count;
+    document.getElementById("flagged").innerText = data.summary.attention_needed;
+    document.getElementById("runtime").innerText = ((end - start)/1000).toFixed(1) + " sec";
 
-        summaryFlaggedLabel.textContent = getFlaggedLabel(mode);
-        summaryTotal.textContent = data.summary.total_employees;
-        summaryClear.textContent = data.summary.clear_count;
-        summaryFlagged.textContent = data.summary.attention_needed;
-        summaryRuntime.textContent = runtime;
-        summaryCard.classList.remove("hidden");
+    document.getElementById("downloads").classList.remove("hidden");
 
-        if (data.downloads.combined_pdf_url) {
-            zipBtn.href = data.downloads.combined_pdf_url;
-            zipBtn.textContent = getZipLabel(mode);
-            zipBtn.classList.remove("hidden");
-        }
-
-        if (data.downloads.results_excel_url) {
-            excelBtn.href = data.downloads.results_excel_url;
-            excelBtn.textContent = getExcelLabel(mode);
-            excelBtn.classList.remove("hidden");
-        }
-
-        downloadSection.classList.remove("hidden");
-
-    } catch (err) {
-        const endTime = performance.now();
-        const runtime = formatRuntime(endTime - startTime);
-
-        statusBox.innerHTML = `
-            <p class="text-red-600 font-semibold">Error: ${err.message}</p>
-            <p class="text-slate-600 mt-1">Stopped after ${runtime}</p>
-        `;
-    } finally {
-        setButtonsDisabled(false);
-        resetButtonLabels();
-    }
+    document.getElementById("zip").href = data.downloads.combined_pdf_url;
+    document.getElementById("excel").href = data.downloads.results_excel_url;
 }
 </script>
 
