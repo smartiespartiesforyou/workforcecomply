@@ -28,7 +28,7 @@
         <h1 class="text-3xl font-bold mb-3 text-center">Run Compliance Checks</h1>
 
         <p class="text-slate-600 mb-8 text-center">
-            Upload your Excel file to run checks and download your audit package.
+            Upload your Excel file and run each compliance check separately.
         </p>
 
         <div class="bg-white p-8 rounded-xl shadow-lg w-full">
@@ -45,16 +45,7 @@
 
             <div id="fileName" class="text-sm text-slate-500 mb-5">No file selected</div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
-                <button
-                    id="runBtn"
-                    type="button"
-                    onclick="runChecks('combined')"
-                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg w-full font-semibold transition"
-                >
-                    Run All Checks
-                </button>
-
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
                 <button
                     id="runOigBtn"
                     type="button"
@@ -84,7 +75,7 @@
             </div>
 
             <p class="text-xs text-slate-500 mb-4">
-                Run All Checks takes longer because it processes OIG, CNA, and DSW/Adverse Actions together.
+                Each check runs separately and creates its own download package for that specific run.
             </p>
 
             <div id="statusBox" class="mt-5 text-sm text-left text-slate-700"></div>
@@ -139,7 +130,6 @@
 <script>
 const fileInput = document.getElementById("fileInput");
 const fileName = document.getElementById("fileName");
-const runBtn = document.getElementById("runBtn");
 const runOigBtn = document.getElementById("runOigBtn");
 const runCnaBtn = document.getElementById("runCnaBtn");
 const runAdverseBtn = document.getElementById("runAdverseBtn");
@@ -166,12 +156,11 @@ function resetDownloads() {
 }
 
 function setButtonsDisabled(isDisabled) {
-    runBtn.disabled = isDisabled;
     runOigBtn.disabled = isDisabled;
     runCnaBtn.disabled = isDisabled;
     runAdverseBtn.disabled = isDisabled;
 
-    const buttons = [runBtn, runOigBtn, runCnaBtn, runAdverseBtn];
+    const buttons = [runOigBtn, runCnaBtn, runAdverseBtn];
 
     if (isDisabled) {
         buttons.forEach(btn => btn.classList.add("opacity-60", "cursor-not-allowed"));
@@ -202,14 +191,14 @@ function getEndpoint(mode) {
     if (mode === "adverse") {
         return "https://workforcecomply-backend-docker.onrender.com/api/run-adverse";
     }
-    return "https://workforcecomply-backend-docker.onrender.com/api/run-checks";
+    return "";
 }
 
 function getRunningMessage(mode) {
     if (mode === "oig") return "Running OIG only... please wait.";
     if (mode === "cna") return "Running CNA only... please wait.";
     if (mode === "adverse") return "Running DSW only... please wait.";
-    return "Running all checks... please wait.";
+    return "Running... please wait.";
 }
 
 function setRunningButton(mode) {
@@ -219,13 +208,10 @@ function setRunningButton(mode) {
         runCnaBtn.textContent = "Running...";
     } else if (mode === "adverse") {
         runAdverseBtn.textContent = "Running...";
-    } else {
-        runBtn.textContent = "Running...";
     }
 }
 
 function resetButtonLabels() {
-    runBtn.textContent = "Run All Checks";
     runOigBtn.textContent = "Run OIG Only";
     runCnaBtn.textContent = "Run CNA Only";
     runAdverseBtn.textContent = "Run DSW Only";
@@ -235,7 +221,21 @@ function getZipLabel(mode) {
     if (mode === "oig") return "Download OIG ZIP";
     if (mode === "cna") return "Download CNA ZIP";
     if (mode === "adverse") return "Download DSW ZIP";
-    return "Download Audit ZIP";
+    return "Download ZIP";
+}
+
+function getExcelLabel(mode) {
+    if (mode === "oig") return "Download OIG Excel";
+    if (mode === "cna") return "Download CNA Excel";
+    if (mode === "adverse") return "Download DSW Excel";
+    return "Download Results Excel";
+}
+
+function getFlaggedLabel(mode) {
+    if (mode === "oig") return "OIG Issues";
+    if (mode === "cna") return "CNA Issues";
+    if (mode === "adverse") return "DSW Issues";
+    return "Flagged";
 }
 
 async function runChecks(mode) {
@@ -285,7 +285,7 @@ async function runChecks(mode) {
         const runtime = formatRuntime(endTime - startTime);
 
         statusBox.innerHTML = `
-            <p class="text-green-600 font-medium">Checks completed successfully.</p>
+            <p class="text-green-600 font-medium">Check completed successfully.</p>
             <p class="text-slate-600 mt-1">Completed in ${runtime}</p>
         `;
 
@@ -301,7 +301,7 @@ async function runChecks(mode) {
                         <div class="text-2xl font-bold text-emerald-600">${data.summary.clear_count}</div>
                     </div>
                     <div>
-                        <div class="text-xs uppercase tracking-wide text-slate-500">Flagged</div>
+                        <div class="text-xs uppercase tracking-wide text-slate-500">${getFlaggedLabel(mode)}</div>
                         <div class="text-2xl font-bold text-red-600">${data.summary.attention_needed}</div>
                     </div>
                     <div>
@@ -321,6 +321,7 @@ async function runChecks(mode) {
         if (data.downloads.results_excel_url) {
             excelBtn.href = data.downloads.results_excel_url;
             excelBtn.classList.remove("hidden");
+            excelBtn.textContent = getExcelLabel(mode);
         }
 
         downloadSection.classList.remove("hidden");
