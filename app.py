@@ -103,6 +103,14 @@ def create_results_excel(employee_results, output_path, mode="combined"):
                     "OIG": normalize_status(e["issues"], "OIG"),
                     "Status": "Attention Required"
                 })
+            elif mode == "cna":
+                flagged_rows.append({
+                    "First Name": e["First Name"],
+                    "Last Name": e["Last Name"],
+                    "SSN": e["SSN"],
+                    "CNA": normalize_status(e["issues"], "CNA"),
+                    "Status": "Attention Required"
+                })
             else:
                 flagged_rows.append({
                     "First Name": e["First Name"],
@@ -120,6 +128,10 @@ def create_results_excel(employee_results, output_path, mode="combined"):
         if mode == "oig":
             df = pd.DataFrame(columns=[
                 "First Name", "Last Name", "SSN", "OIG", "Status"
+            ])
+        elif mode == "cna":
+            df = pd.DataFrame(columns=[
+                "First Name", "Last Name", "SSN", "CNA", "Status"
             ])
         else:
             df = pd.DataFrame(columns=[
@@ -235,7 +247,6 @@ def process_combined_run(df, run_folder):
                     "flagged": False
                 }
 
-                # OIG
                 try:
                     oig_result = executor.submit(run_oig_safe, first, last, oig_folder).result()
                     oig_pdf = oig_result.get("pdf_path")
@@ -251,7 +262,6 @@ def process_combined_run(df, run_folder):
                 except Exception as e:
                     employee["issues"].append(f"REVIEW NEEDED - OIG ERROR: {str(e)}")
 
-                # CNA
                 if len(ssn) != 9:
                     employee["issues"].append("ERROR - INVALID SSN FOR CNA")
                 else:
@@ -273,12 +283,10 @@ def process_combined_run(df, run_folder):
                                 employee["issues"].append(f"REVIEW NEEDED - CNA ERROR: {error}")
                             else:
                                 employee["issues"].append("REVIEW NEEDED - CNA ERROR")
-                        # clear and not_found do not get flagged
 
                     except Exception as e:
                         employee["issues"].append(f"REVIEW NEEDED - CNA ERROR: {str(e)}")
 
-                # ADVERSE
                 if len(ssn) != 9:
                     employee["issues"].append("ERROR - INVALID SSN FOR ADVERSE")
                 else:
@@ -390,6 +398,76 @@ def process_oig_only_run(df, run_folder):
     return employee_results
 
 
+def process_cna_only_run(df, run_folder):
+    cna_folder = os.path.join(run_folder, "CNA_Report")
+    os.makedirs(cna_folder, exist_ok=True)
+
+    employee_results = []
+    cna_paths = []
+
+    try:
+        for _, row in df.iterrows():
+            first = safe_text(row["First Name"])
+            last = safe_text(row["Last Name"])
+            ssn_raw = row["SSN"]
+            ssn = clean_ssn(ssn_raw)
+
+            employee = {
+                "First Name": first,
+                "Last Name": last,
+                "SSN": ssn,
+                "issues": [],
+                "flagged": False
+            }
+
+            if len(ssn) != 9:
+                employee["issues"].append("ERROR - INVALID SSN FOR CNA")
+            else:
+                try:
+                    cna_result = run_cna_safe(ssn, cna_folder)
+                    cna_pdf = cna_result.get("pdf_path")
+                    cna_status = cna_result.get("cna_result", "")
+
+                    if cna_pdf:
+                        cna_paths.append(cna_pdf)
+
+                    if cna_status == "not_active":
+                        employee["issues"].append("CNA NOT ACTIVE")
+                    elif cna_status == "review_needed":
+                        employee["issues"].append("REVIEW NEEDED - CNA REVIEW")
+                    elif cna_status == "error":
+                        error = cna_result.get("error")
+                        if error:
+                            employee["issues"].append(f"REVIEW NEEDED - CNA ERROR: {error}")
+                        else:
+                            employee["issues"].append("REVIEW NEEDED - CNA ERROR")
+
+                except Exception as e:
+                    employee["issues"].append(f"REVIEW NEEDED - CNA ERROR: {str(e)}")
+
+            if employee["issues"]:
+                employee["flagged"] = True
+
+            employee_results.append(employee)
+
+    finally:
+        close_cna_session()
+
+    merge_pdfs(cna_paths, os.path.join(cna_folder, "CNA_Merged.pdf"))
+
+    results_excel_path = os.path.join(run_folder, "Results.xlsx")
+    create_results_excel(employee_results, results_excel_path, mode="cna")
+
+    zip_path = os.path.join(run_folder, "output.zip")
+    build_zip(
+        run_folder,
+        zip_path,
+        include_folders=["CNA_Report"]
+    )
+
+    return employee_results
+
+
 def make_response(run_id, employee_results):
     total = len(employee_results)
     flagged = sum(1 for e in employee_results if e["flagged"])
@@ -466,6 +544,31 @@ def run_oig_only():
         return jsonify({"error": f"Could not read Excel file: {e}"}), 400
 
     employee_results = process_oig_only_run(df, run_folder)
+    return make_response(run_id, employee_results)
+
+
+@app.route("/api/run-cna", methods=["POST"])
+def run_cna_only():
+    cleanup_old_runs(RUNS_FOLDER)
+
+    file = request.files.get("file")
+    if not file or file.filename == "":
+        return jsonify({"error": "No file selected"}), 400
+
+    run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+    run_folder = os.path.join(RUNS_FOLDER, run_id)
+    os.makedirs(run_folder, exist_ok=True)
+
+    upload_path = prepare_upload(file, run_id)
+
+    try:
+        df = read_input_dataframe(upload_path)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": f"Could not read Excel file: {e}"}), 400
+
+    employee_results = process_cna_only_run(df, run_folder)
     return make_response(run_id, employee_results)
 
 
