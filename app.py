@@ -417,10 +417,10 @@ def process_oig_only_run(df, run_folder):
 
     merge_pdfs(oig_paths, os.path.join(oig_folder, "OIG_Merged.pdf"))
 
-    results_excel_path = os.path.join(run_folder, "Results.xlsx")
+    results_excel_path = os.path.join(run_folder, "OIG_Results.xlsx")
     create_results_excel(employee_results, results_excel_path, mode="oig")
 
-    zip_path = os.path.join(run_folder, "output.zip")
+    zip_path = os.path.join(run_folder, "OIG_Report.zip")
     build_zip(run_folder, zip_path, include_folders=["OIG_Report"])
 
     return employee_results
