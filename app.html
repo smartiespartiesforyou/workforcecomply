@@ -47,7 +47,7 @@
 
             <div id="fileName" class="text-sm text-slate-500 mb-5">No file selected</div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
                 <button
                     id="runBtn"
                     type="button"
@@ -64,6 +64,15 @@
                     class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-3 rounded-lg w-full font-semibold transition"
                 >
                     Run OIG Only
+                </button>
+
+                <button
+                    id="runCnaBtn"
+                    type="button"
+                    onclick="runChecks('cna')"
+                    class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-3 rounded-lg w-full font-semibold transition"
+                >
+                    Run CNA Only
                 </button>
             </div>
 
@@ -83,7 +92,7 @@
                         rel="noopener noreferrer"
                         class="hidden bg-slate-900 hover:bg-slate-800 text-white text-center px-4 py-3 rounded-lg font-semibold transition"
                     >
-                        Download Audit ZIP
+                        Download ZIP
                     </a>
 
                     <a
@@ -101,7 +110,7 @@
                         href="#"
                         target="_blank"
                         rel="noopener noreferrer"
-                        class="hidden bg-emerald-600 hover:bg-emerald-700 text-white text-center px-4 py-3 rounded-lg font-semibold transition"
+                        class="hidden bg-emerald-700 hover:bg-emerald-800 text-white text-center px-4 py-3 rounded-lg font-semibold transition"
                     >
                         Download Results Excel
                     </a>
@@ -135,6 +144,7 @@ const fileInput = document.getElementById("fileInput");
 const fileName = document.getElementById("fileName");
 const runBtn = document.getElementById("runBtn");
 const runOigBtn = document.getElementById("runOigBtn");
+const runCnaBtn = document.getElementById("runCnaBtn");
 const statusBox = document.getElementById("statusBox");
 const resultBox = document.getElementById("result");
 const downloadSection = document.getElementById("downloadSection");
@@ -165,13 +175,16 @@ function resetDownloads() {
 function setButtonsDisabled(isDisabled) {
     runBtn.disabled = isDisabled;
     runOigBtn.disabled = isDisabled;
+    runCnaBtn.disabled = isDisabled;
 
     if (isDisabled) {
         runBtn.classList.add("opacity-60", "cursor-not-allowed");
         runOigBtn.classList.add("opacity-60", "cursor-not-allowed");
+        runCnaBtn.classList.add("opacity-60", "cursor-not-allowed");
     } else {
         runBtn.classList.remove("opacity-60", "cursor-not-allowed");
         runOigBtn.classList.remove("opacity-60", "cursor-not-allowed");
+        runCnaBtn.classList.remove("opacity-60", "cursor-not-allowed");
     }
 }
 
@@ -187,6 +200,44 @@ function formatRuntime(ms) {
     return `${minutes} min ${seconds} sec`;
 }
 
+function getEndpoint(mode) {
+    if (mode === "oig") {
+        return "https://workforcecomply-backend-docker.onrender.com/api/run-oig";
+    }
+    if (mode === "cna") {
+        return "https://workforcecomply-backend-docker.onrender.com/api/run-cna";
+    }
+    return "https://workforcecomply-backend-docker.onrender.com/api/run-checks";
+}
+
+function getRunningMessage(mode) {
+    if (mode === "oig") return "Running OIG only... please wait.";
+    if (mode === "cna") return "Running CNA only... please wait.";
+    return "Running all checks... please wait.";
+}
+
+function setRunningButton(mode) {
+    if (mode === "oig") {
+        runOigBtn.textContent = "Running...";
+    } else if (mode === "cna") {
+        runCnaBtn.textContent = "Running...";
+    } else {
+        runBtn.textContent = "Running...";
+    }
+}
+
+function resetButtonLabels() {
+    runBtn.textContent = "Run All Checks";
+    runOigBtn.textContent = "Run OIG Only";
+    runCnaBtn.textContent = "Run CNA Only";
+}
+
+function getZipLabel(mode) {
+    if (mode === "oig") return "Download OIG ZIP";
+    if (mode === "cna") return "Download CNA ZIP";
+    return "Download Audit ZIP";
+}
+
 async function runChecks(mode) {
     const file = fileInput.files[0];
 
@@ -200,22 +251,15 @@ async function runChecks(mode) {
     }
 
     setButtonsDisabled(true);
+    setRunningButton(mode);
 
-    if (mode === "oig") {
-        runOigBtn.textContent = "Running...";
-        statusBox.innerHTML = '<p class="text-blue-600 font-medium">Running OIG only... please wait.</p>';
-    } else {
-        runBtn.textContent = "Running...";
-        statusBox.innerHTML = '<p class="text-blue-600 font-medium">Running all checks... please wait.</p>';
-    }
+    statusBox.innerHTML = `<p class="text-blue-600 font-medium">${getRunningMessage(mode)}</p>`;
 
     const formData = new FormData();
     formData.append("file", file);
 
     const startTime = performance.now();
-    const endpoint = mode === "oig"
-        ? "https://workforcecomply-backend-docker.onrender.com/api/run-oig"
-        : "https://workforcecomply-backend-docker.onrender.com/api/run-checks";
+    const endpoint = getEndpoint(mode);
 
     try {
         const response = await fetch(endpoint, {
@@ -271,13 +315,13 @@ async function runChecks(mode) {
         if (data.downloads.combined_pdf_url) {
             combinedPdfBtn.href = data.downloads.combined_pdf_url;
             combinedPdfBtn.classList.remove("hidden");
-            combinedPdfBtn.textContent = mode === "oig" ? "Download OIG ZIP" : "Download Audit ZIP";
+            combinedPdfBtn.textContent = getZipLabel(mode);
         }
 
         if (data.downloads.individual_zip_url) {
             zipBtn.href = data.downloads.individual_zip_url;
             zipBtn.classList.remove("hidden");
-            zipBtn.textContent = mode === "oig" ? "Download OIG ZIP" : "Download ZIP";
+            zipBtn.textContent = getZipLabel(mode);
         }
 
         if (data.downloads.results_excel_url) {
@@ -297,8 +341,7 @@ async function runChecks(mode) {
         `;
     } finally {
         setButtonsDisabled(false);
-        runBtn.textContent = "Run All Checks";
-        runOigBtn.textContent = "Run OIG Only";
+        resetButtonLabels();
     }
 }
 </script>
