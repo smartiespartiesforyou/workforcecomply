@@ -47,14 +47,29 @@
 
             <div id="fileName" class="text-sm text-slate-500 mb-5">No file selected</div>
 
-            <button
-                id="runBtn"
-                type="button"
-                onclick="runChecks()"
-                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg w-full font-semibold transition"
-            >
-                Run Checks
-            </button>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                <button
+                    id="runBtn"
+                    type="button"
+                    onclick="runChecks('combined')"
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg w-full font-semibold transition"
+                >
+                    Run All Checks
+                </button>
+
+                <button
+                    id="runOigBtn"
+                    type="button"
+                    onclick="runChecks('oig')"
+                    class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-3 rounded-lg w-full font-semibold transition"
+                >
+                    Run OIG Only
+                </button>
+            </div>
+
+            <p class="text-xs text-slate-500 mb-4">
+                Run All Checks takes longer because it processes OIG, CNA, and Adverse Actions together.
+            </p>
 
             <div id="statusBox" class="mt-5 text-sm text-left text-slate-700"></div>
             <div id="result" class="mt-6 text-left text-sm text-slate-700"></div>
@@ -68,7 +83,7 @@
                         rel="noopener noreferrer"
                         class="hidden bg-slate-900 hover:bg-slate-800 text-white text-center px-4 py-3 rounded-lg font-semibold transition"
                     >
-                        Download Combined PDF
+                        Download Audit ZIP
                     </a>
 
                     <a
@@ -78,7 +93,7 @@
                         rel="noopener noreferrer"
                         class="hidden bg-blue-600 hover:bg-blue-700 text-white text-center px-4 py-3 rounded-lg font-semibold transition"
                     >
-                        Download Audit ZIP
+                        Download ZIP
                     </a>
 
                     <a
@@ -119,6 +134,7 @@
 const fileInput = document.getElementById("fileInput");
 const fileName = document.getElementById("fileName");
 const runBtn = document.getElementById("runBtn");
+const runOigBtn = document.getElementById("runOigBtn");
 const statusBox = document.getElementById("statusBox");
 const resultBox = document.getElementById("result");
 const downloadSection = document.getElementById("downloadSection");
@@ -146,6 +162,19 @@ function resetDownloads() {
     excelBtn.href = "#";
 }
 
+function setButtonsDisabled(isDisabled) {
+    runBtn.disabled = isDisabled;
+    runOigBtn.disabled = isDisabled;
+
+    if (isDisabled) {
+        runBtn.classList.add("opacity-60", "cursor-not-allowed");
+        runOigBtn.classList.add("opacity-60", "cursor-not-allowed");
+    } else {
+        runBtn.classList.remove("opacity-60", "cursor-not-allowed");
+        runOigBtn.classList.remove("opacity-60", "cursor-not-allowed");
+    }
+}
+
 function formatRuntime(ms) {
     const totalSeconds = ms / 1000;
 
@@ -158,7 +187,7 @@ function formatRuntime(ms) {
     return `${minutes} min ${seconds} sec`;
 }
 
-async function runChecks() {
+async function runChecks(mode) {
     const file = fileInput.files[0];
 
     resultBox.innerHTML = "";
@@ -170,19 +199,26 @@ async function runChecks() {
         return;
     }
 
-    runBtn.disabled = true;
-    runBtn.textContent = "Running...";
-    runBtn.classList.add("opacity-60", "cursor-not-allowed");
+    setButtonsDisabled(true);
 
-    statusBox.innerHTML = '<p class="text-blue-600 font-medium">Processing... please wait.</p>';
+    if (mode === "oig") {
+        runOigBtn.textContent = "Running...";
+        statusBox.innerHTML = '<p class="text-blue-600 font-medium">Running OIG only... please wait.</p>';
+    } else {
+        runBtn.textContent = "Running...";
+        statusBox.innerHTML = '<p class="text-blue-600 font-medium">Running all checks... please wait.</p>';
+    }
 
     const formData = new FormData();
     formData.append("file", file);
 
     const startTime = performance.now();
+    const endpoint = mode === "oig"
+        ? "https://workforcecomply-backend-docker.onrender.com/api/run-oig"
+        : "https://workforcecomply-backend-docker.onrender.com/api/run-checks";
 
     try {
-        const response = await fetch("https://workforcecomply-backend-docker.onrender.com/api/run-checks", {
+        const response = await fetch(endpoint, {
             method: "POST",
             body: formData,
             mode: "cors"
@@ -235,11 +271,13 @@ async function runChecks() {
         if (data.downloads.combined_pdf_url) {
             combinedPdfBtn.href = data.downloads.combined_pdf_url;
             combinedPdfBtn.classList.remove("hidden");
+            combinedPdfBtn.textContent = mode === "oig" ? "Download OIG ZIP" : "Download Audit ZIP";
         }
 
         if (data.downloads.individual_zip_url) {
             zipBtn.href = data.downloads.individual_zip_url;
             zipBtn.classList.remove("hidden");
+            zipBtn.textContent = mode === "oig" ? "Download OIG ZIP" : "Download ZIP";
         }
 
         if (data.downloads.results_excel_url) {
@@ -258,9 +296,9 @@ async function runChecks() {
             <p class="text-slate-600 mt-1">Stopped after ${runtime}</p>
         `;
     } finally {
-        runBtn.disabled = false;
-        runBtn.textContent = "Run Checks";
-        runBtn.classList.remove("opacity-60", "cursor-not-allowed");
+        setButtonsDisabled(false);
+        runBtn.textContent = "Run All Checks";
+        runOigBtn.textContent = "Run OIG Only";
     }
 }
 </script>
