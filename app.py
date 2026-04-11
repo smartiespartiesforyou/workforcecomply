@@ -698,12 +698,17 @@ def run_adverse_only():
 @app.route("/api/download/<run_id>/zip", methods=["GET"])
 def download_zip(run_id):
     run_folder = os.path.join(RUNS_FOLDER, run_id)
-    zip_path = os.path.join(run_folder, "output.zip")
+    zip_path = None
 
     if not os.path.exists(run_folder):
         return jsonify({"error": "Run folder not found"}), 404
 
-    if not os.path.exists(zip_path):
+    for f in os.listdir(run_folder):
+        if f.endswith(".zip"):
+            zip_path = os.path.join(run_folder, f)
+            break
+
+    if not zip_path or not os.path.exists(zip_path):
         return jsonify({"error": "ZIP file not found"}), 404
 
     return send_file(zip_path, as_attachment=True)
