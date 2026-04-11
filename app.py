@@ -199,7 +199,8 @@ def run_checks():
     os.makedirs(cna_folder, exist_ok=True)
     os.makedirs(adverse_folder, exist_ok=True)
 
-    upload_path = os.path.join(UPLOAD_FOLDER, f"{run_id}_{file.filename}")
+    upload_name = os.path.basename(file.filename)
+    upload_path = os.path.join(UPLOAD_FOLDER, f"{run_id}_{upload_name}")
     file.save(upload_path)
 
     try:
@@ -218,7 +219,7 @@ def run_checks():
     adverse_paths = []
 
     try:
-        with ThreadPoolExecutor(max_workers=3) as executor:
+        with ThreadPoolExecutor(max_workers=2) as side_executor:
             for _, row in df.iterrows():
                 first = safe_text(row["First Name"])
                 last = safe_text(row["Last Name"])
@@ -233,9 +234,9 @@ def run_checks():
                     "flagged": False
                 }
 
-                # OIG
+                # OIG stays as-is because it is already working reliably
                 try:
-                    oig_result = executor.submit(run_oig_safe, first, last, oig_folder).result()
+                    oig_result = run_oig_safe(first, last, oig_folder)
                     oig_pdf = oig_result.get("pdf_path")
 
                     if oig_pdf:
@@ -249,12 +250,17 @@ def run_checks():
                 except Exception as e:
                     employee["issues"].append(f"REVIEW NEEDED - OIG ERROR: {str(e)}")
 
-                # CNA
+                # CNA + ADVERSE run at the same time
                 if len(ssn) != 9:
                     employee["issues"].append("ERROR - INVALID SSN FOR CNA")
+                    employee["issues"].append("ERROR - INVALID SSN FOR ADVERSE")
                 else:
+                    cna_future = side_executor.submit(run_cna_safe, ssn, cna_folder)
+                    adverse_future = side_executor.submit(run_adverse_safe, first, last, ssn, adverse_folder)
+
+                    # CNA
                     try:
-                        cna_result = executor.submit(run_cna_safe, ssn, cna_folder).result()
+                        cna_result = cna_future.result()
                         cna_pdf = cna_result.get("pdf_path")
                         cna_status = cna_result.get("cna_result", "")
 
@@ -276,18 +282,9 @@ def run_checks():
                     except Exception as e:
                         employee["issues"].append(f"REVIEW NEEDED - CNA ERROR: {str(e)}")
 
-                # ADVERSE
-                if len(ssn) != 9:
-                    employee["issues"].append("ERROR - INVALID SSN FOR ADVERSE")
-                else:
+                    # ADVERSE
                     try:
-                        adverse_result = executor.submit(
-                            run_adverse_safe,
-                            first,
-                            last,
-                            ssn,
-                            adverse_folder
-                        ).result()
+                        adverse_result = adverse_future.result()
                         adverse_pdf = adverse_result.get("pdf_path")
 
                         if adverse_pdf:
