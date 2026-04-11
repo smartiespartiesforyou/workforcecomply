@@ -135,8 +135,27 @@ def create_results_excel(employee_results, output_path, mode="combined"):
                     "Status": "Attention Required"
                 })
 
+    if flagged_rows:
     df = pd.DataFrame(flagged_rows)
-    df.to_excel(output_path, index=False)
+else:
+    if mode == "oig":
+        df = pd.DataFrame(columns=[
+            "First Name", "Last Name", "SSN", "OIG", "Status"
+        ])
+    elif mode == "cna":
+        df = pd.DataFrame(columns=[
+            "First Name", "Last Name", "SSN", "CNA", "Status"
+        ])
+    elif mode == "adverse":
+        df = pd.DataFrame(columns=[
+            "First Name", "Last Name", "SSN", "DSW Result", "Issue Details", "Status"
+        ])
+    else:
+        df = pd.DataFrame(columns=[
+            "First Name", "Last Name", "SSN", "OIG", "CNA", "Adverse", "Status"
+        ])
+
+df.to_excel(output_path, index=False)
 
 def build_zip(run_folder, zip_path, include_folders):
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
