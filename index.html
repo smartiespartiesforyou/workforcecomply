@@ -18,8 +18,23 @@
 
 <style>
 body { font-family: 'Inter', sans-serif; }
+
 .hero-gradient {
   background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+}
+
+.soft-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.04);
+  transition: all 0.2s ease;
+}
+
+.soft-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.08);
 }
 </style>
 
@@ -32,10 +47,10 @@ body { font-family: 'Inter', sans-serif; }
 
     <div class="flex items-center gap-2">
         <div class="bg-blue-600 w-10 h-10 flex items-center justify-center rounded-lg font-bold">W</div>
-        <span class="text-xl font-semibold">WorkforceComply</span>
+        <span class="text-xl font-semibold tracking-tight">WorkforceComply</span>
     </div>
 
-    <div class="hidden md:flex items-center gap-6">
+    <div class="hidden md:flex items-center gap-6 text-sm font-medium">
         <a href="how-it-works.html" class="hover:text-gray-300">How it Works</a>
         <a href="pricing.html" class="hover:text-gray-300">Pricing</a>
         <a href="contact.html" class="hover:text-gray-300">Contact</a>
@@ -54,7 +69,7 @@ body { font-family: 'Inter', sans-serif; }
 </nav>
 
 <!-- HERO -->
-<section class="hero-gradient text-white text-center py-24 px-6">
+<section class="hero-gradient text-white text-center py-28 px-6">
 
     <div class="max-w-5xl mx-auto">
 
@@ -62,27 +77,27 @@ body { font-family: 'Inter', sans-serif; }
             Healthcare HR Compliance
         </p>
 
-        <h1 class="text-4xl md:text-6xl font-bold leading-tight">
+        <h1 class="text-4xl md:text-6xl font-bold leading-tight tracking-tight">
             Run Compliance Checks Faster — With Audit-Ready Proof
         </h1>
 
-        <p class="mt-6 text-lg text-gray-300 max-w-3xl mx-auto">
+        <p class="mt-6 text-lg text-gray-300 max-w-3xl mx-auto leading-relaxed">
             Upload your employee list and generate clean, time-stamped compliance reports. Built for healthcare HR teams and expanding nationwide.
         </p>
 
         <div class="mt-10 flex flex-col sm:flex-row justify-center gap-4">
             <a href="app.html"
-               class="bg-blue-600 hover:bg-blue-700 px-8 py-4 rounded-xl text-lg font-bold">
+               class="bg-blue-600 hover:bg-blue-700 px-8 py-4 rounded-xl text-lg font-semibold shadow-md">
                 Open Compliance App
             </a>
 
             <a href="how-it-works.html"
-               class="border border-white/30 hover:bg-white/10 px-8 py-4 rounded-xl text-lg font-bold">
+               class="border border-white/30 hover:bg-white/10 px-8 py-4 rounded-xl text-lg font-semibold">
                 See How It Works
             </a>
         </div>
 
-        <div class="mt-10 flex flex-wrap justify-center gap-8 text-sm text-gray-300">
+        <div class="mt-12 flex flex-wrap justify-center gap-8 text-sm text-gray-300">
             <span>✓ Audit-Ready Documentation</span>
             <span>✓ Flagged Records First</span>
             <span>✓ Built for Healthcare HR</span>
@@ -92,54 +107,59 @@ body { font-family: 'Inter', sans-serif; }
 
 </section>
 
-<!-- CORE VALUE -->
-<section class="py-16 px-6 max-w-6xl mx-auto">
+<!-- FEATURES -->
+<section class="py-20 px-6 max-w-6xl mx-auto">
+
     <div class="grid md:grid-cols-3 gap-8">
 
-        <div class="bg-white p-8 rounded-2xl shadow-sm border">
-            <h3 class="text-xl font-bold mb-3">Run Checks Individually</h3>
-            <p class="text-slate-600">
-                Keep each compliance check separate so results stay clean, organized, and easy to review.
+        <div class="soft-card">
+            <h3 class="text-xl font-semibold mb-3">Run Checks Individually</h3>
+            <p class="text-slate-600 leading-relaxed">
+                Keep each compliance run separate so results stay clean, organized, and easy to review.
             </p>
         </div>
 
-        <div class="bg-white p-8 rounded-2xl shadow-sm border">
-            <h3 class="text-xl font-bold mb-3">Download Proof Packages</h3>
-            <p class="text-slate-600">
-                Every run generates a ZIP file and Excel report ready for audits and personnel records.
+        <div class="soft-card">
+            <h3 class="text-xl font-semibold mb-3">Download Proof Packages</h3>
+            <p class="text-slate-600 leading-relaxed">
+                Each run generates a ZIP file and Excel report ready for audits and personnel records.
             </p>
         </div>
 
-        <div class="bg-white p-8 rounded-2xl shadow-sm border">
-            <h3 class="text-xl font-bold mb-3">Built to Scale</h3>
-            <p class="text-slate-600">
+        <div class="soft-card">
+            <h3 class="text-xl font-semibold mb-3">Built to Scale</h3>
+            <p class="text-slate-600 leading-relaxed">
                 WorkforceComply is designed to expand beyond one state with new compliance checks added over time.
             </p>
         </div>
 
     </div>
+
 </section>
 
-<!-- WHY IT MATTERS -->
-<section class="py-16 px-6 bg-white border-t">
-    <div class="max-w-5xl mx-auto text-center">
+<!-- TRUST SECTION -->
+<section class="py-20 px-6 bg-white border-t">
+
+    <div class="max-w-4xl mx-auto text-center">
 
         <h2 class="text-3xl font-bold mb-6">Why this matters</h2>
 
-        <p class="text-slate-600 text-lg max-w-3xl mx-auto">
+        <p class="text-slate-600 text-lg leading-relaxed">
             Manual compliance checks slow down hiring, create inconsistent proof, and make audits harder than they need to be. WorkforceComply gives HR teams a faster, cleaner way to verify and document everything in one place.
         </p>
 
     </div>
+
 </section>
 
 <!-- FUTURE / MULTI-STATE -->
-<section class="py-16 px-6 max-w-6xl mx-auto">
+<section class="py-20 px-6 max-w-6xl mx-auto">
+
     <div class="bg-slate-50 rounded-2xl border p-10">
 
-        <h3 class="text-2xl font-bold mb-4">Expanding Nationwide</h3>
+        <h3 class="text-2xl font-semibold mb-4">Expanding Nationwide</h3>
 
-        <p class="text-slate-600 mb-6">
+        <p class="text-slate-600 mb-6 leading-relaxed">
             WorkforceComply is growing into a multi-state compliance platform. Additional registries and checks are being added to support broader healthcare compliance workflows.
         </p>
 
@@ -151,19 +171,23 @@ body { font-family: 'Inter', sans-serif; }
         </div>
 
     </div>
+
 </section>
 
 <!-- CTA -->
-<section class="py-20 text-center px-6">
+<section class="py-24 text-center px-6">
+
     <h2 class="text-3xl font-bold mb-4">Start running compliance checks today</h2>
+
     <p class="text-slate-600 mb-8">
         Upload your file, run your checks, and download your proof — no manual work needed.
     </p>
 
     <a href="app.html"
-       class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-xl text-lg font-bold">
+       class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-xl text-lg font-semibold shadow-md">
         Open Compliance App
     </a>
+
 </section>
 
 <footer class="bg-[#0f172a] py-12 text-center text-white">
