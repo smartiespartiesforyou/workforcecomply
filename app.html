@@ -49,6 +49,27 @@ body { font-family: 'Inter', sans-serif; }
 
 <body class="bg-slate-100 text-slate-900">
 
+<!-- NAV -->
+<nav class="flex items-center justify-between px-8 py-4 bg-[#0f172a] text-white">
+
+    <a href="index.html" class="flex items-center gap-2">
+        <div class="bg-blue-600 w-10 h-10 flex items-center justify-center rounded-lg font-bold">W</div>
+        <span class="text-xl font-semibold tracking-tight">WorkforceComply</span>
+    </a>
+
+    <div class="hidden md:flex items-center gap-6 text-sm font-medium">
+        <a href="index.html" class="hover:text-gray-300">Home</a>
+        <a href="how-it-works.html" class="hover:text-gray-300">How it Works</a>
+        <a href="pricing.html" class="hover:text-gray-300">Pricing</a>
+
+        <button data-ms-action="logout"
+            class="border border-white px-4 py-2 rounded-lg hover:bg-white hover:text-blue-600">
+            Sign Out
+        </button>
+    </div>
+
+</nav>
+
 <div class="min-h-screen px-6 py-10">
 
     <div class="max-w-5xl mx-auto">
