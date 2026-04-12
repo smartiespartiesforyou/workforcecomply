@@ -13,6 +13,37 @@
 <title>WorkforceComply App</title>
 
 <script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+<style>
+body { font-family: 'Inter', sans-serif; }
+
+.soft-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+}
+
+.check-card {
+  border-radius: 16px;
+  padding: 1rem;
+  text-align: left;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+}
+
+.check-card:hover {
+  transform: translateY(-2px);
+}
+
+.check-card:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+</style>
 
 </head>
 
@@ -21,86 +52,231 @@
 <div class="min-h-screen px-6 py-10">
 
     <div class="max-w-5xl mx-auto">
+
         <div class="text-center mb-8">
-            <h1 class="text-3xl font-bold">WorkforceComply</h1>
-            <p class="text-slate-600 mt-2">
-                Run compliance checks individually.
+            <p class="text-sm uppercase tracking-[0.25em] text-blue-600 font-semibold mb-3">
+                WorkforceComply
+            </p>
+            <h1 class="text-3xl md:text-4xl font-bold tracking-tight">Run Compliance Checks Individually</h1>
+            <p class="text-slate-600 mt-3 max-w-2xl mx-auto">
+                Upload your workforce file, run the check you need, and download a clean proof package for that specific run.
             </p>
         </div>
 
-        <div class="bg-white rounded-xl shadow p-6">
+        <div class="soft-card p-6 md:p-8">
 
-            <input id="fileInput" type="file" class="mb-4 w-full border p-3 rounded">
-
-            <div class="grid grid-cols-3 gap-4 mb-6">
-                <button onclick="runChecks('oig')" class="bg-black text-white p-4 rounded">OIG</button>
-                <button onclick="runChecks('cna')" class="bg-green-600 text-white p-4 rounded">CNA</button>
-                <button onclick="runChecks('adverse')" class="bg-yellow-600 text-white p-4 rounded">DSW</button>
+            <div class="mb-6">
+                <label for="fileInput" class="block text-sm font-semibold text-slate-700 mb-2">
+                    Upload Excel File
+                </label>
+                <input
+                    id="fileInput"
+                    type="file"
+                    class="w-full border border-slate-300 bg-white p-3 rounded-xl"
+                >
+                <p class="text-sm text-slate-500 mt-2">
+                    Use one employee file per run.
+                </p>
             </div>
 
-            <div id="status" class="mb-4 text-gray-600"></div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <button
+                    id="oigBtn"
+                    onclick="runChecks('oig')"
+                    class="check-card bg-slate-900 text-white"
+                >
+                    <div class="text-base font-semibold">Run OIG</div>
+                    <div class="text-sm text-slate-300 font-normal mt-1">Fast exclusion check</div>
+                </button>
 
-            <div id="summary" class="hidden mb-4">
-                <p>Total: <span id="total"></span></p>
-                <p>Clear: <span id="clear"></span></p>
-                <p>Issues: <span id="flagged"></span></p>
-                <p>Runtime: <span id="runtime"></span></p>
+                <button
+                    id="cnaBtn"
+                    onclick="runChecks('cna')"
+                    class="check-card bg-emerald-600 text-white"
+                >
+                    <div class="text-base font-semibold">Run CNA</div>
+                    <div class="text-sm text-emerald-100 font-normal mt-1">Fast registry check</div>
+                </button>
+
+                <button
+                    id="dswBtn"
+                    onclick="runChecks('adverse')"
+                    class="check-card bg-amber-600 text-white"
+                >
+                    <div class="text-base font-semibold">Run DSW</div>
+                    <div class="text-sm text-amber-100 font-normal mt-1">Slower adverse check</div>
+                </button>
             </div>
 
-            <div id="downloads" class="hidden space-y-2">
-                <a id="zip" class="block bg-blue-600 text-white p-3 rounded text-center">Download ZIP</a>
-                <a id="excel" class="block bg-green-700 text-white p-3 rounded text-center">Download Excel</a>
+            <div id="statusCard" class="hidden rounded-2xl border border-slate-200 bg-slate-50 p-4 mb-5">
+                <div id="status" class="text-sm text-slate-700"></div>
+            </div>
+
+            <div id="summary" class="hidden mb-5">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="bg-white border border-slate-200 rounded-2xl p-4 text-center shadow-sm">
+                        <div class="text-xs uppercase tracking-wide text-slate-500">Total</div>
+                        <div id="total" class="text-2xl font-bold text-slate-900 mt-1">0</div>
+                    </div>
+                    <div class="bg-white border border-slate-200 rounded-2xl p-4 text-center shadow-sm">
+                        <div class="text-xs uppercase tracking-wide text-slate-500">Clear</div>
+                        <div id="clear" class="text-2xl font-bold text-emerald-600 mt-1">0</div>
+                    </div>
+                    <div class="bg-white border border-slate-200 rounded-2xl p-4 text-center shadow-sm">
+                        <div id="issuesLabel" class="text-xs uppercase tracking-wide text-slate-500">Issues</div>
+                        <div id="flagged" class="text-2xl font-bold text-red-600 mt-1">0</div>
+                    </div>
+                    <div class="bg-white border border-slate-200 rounded-2xl p-4 text-center shadow-sm">
+                        <div class="text-xs uppercase tracking-wide text-slate-500">Runtime</div>
+                        <div id="runtime" class="text-xl font-bold text-slate-900 mt-1">0 sec</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="downloads" class="hidden">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <a id="zip"
+                       class="block bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-xl text-center font-semibold shadow-sm transition">
+                        Download ZIP
+                    </a>
+                    <a id="excel"
+                       class="block bg-emerald-700 hover:bg-emerald-800 text-white p-4 rounded-xl text-center font-semibold shadow-sm transition">
+                        Download Excel
+                    </a>
+                </div>
             </div>
 
         </div>
+
     </div>
 
 </div>
 
 <script>
-async function runChecks(type) {
+const fileInput = document.getElementById("fileInput");
+const statusCard = document.getElementById("statusCard");
+const statusEl = document.getElementById("status");
+const summary = document.getElementById("summary");
+const downloads = document.getElementById("downloads");
 
-    const file = document.getElementById("fileInput").files[0];
+const totalEl = document.getElementById("total");
+const clearEl = document.getElementById("clear");
+const flaggedEl = document.getElementById("flagged");
+const runtimeEl = document.getElementById("runtime");
+const issuesLabel = document.getElementById("issuesLabel");
+
+const zipEl = document.getElementById("zip");
+const excelEl = document.getElementById("excel");
+
+const oigBtn = document.getElementById("oigBtn");
+const cnaBtn = document.getElementById("cnaBtn");
+const dswBtn = document.getElementById("dswBtn");
+
+function setButtonsDisabled(disabled) {
+    [oigBtn, cnaBtn, dswBtn].forEach(btn => {
+        btn.disabled = disabled;
+    });
+}
+
+function resetView() {
+    statusCard.classList.add("hidden");
+    summary.classList.add("hidden");
+    downloads.classList.add("hidden");
+    statusEl.innerText = "";
+}
+
+function getEndpoint(type) {
+    if (type === "oig") return "/api/run-oig";
+    if (type === "cna") return "/api/run-cna";
+    if (type === "adverse") return "/api/run-adverse";
+    return "";
+}
+
+function getIssueLabel(type) {
+    if (type === "oig") return "OIG Issues";
+    if (type === "cna") return "CNA Issues";
+    if (type === "adverse") return "DSW Issues";
+    return "Issues";
+}
+
+function getZipLabel(type) {
+    if (type === "oig") return "Download OIG Report";
+    if (type === "cna") return "Download CNA Report";
+    if (type === "adverse") return "Download DSW Report";
+    return "Download ZIP";
+}
+
+function getExcelLabel(type) {
+    if (type === "oig") return "Download OIG Excel";
+    if (type === "cna") return "Download CNA Excel";
+    if (type === "adverse") return "Download DSW Excel";
+    return "Download Excel";
+}
+
+function getRunningMessage(type) {
+    if (type === "oig") return "Running OIG check...";
+    if (type === "cna") return "Running CNA check...";
+    if (type === "adverse") return "Running DSW check... this one usually takes longer.";
+    return "Running...";
+}
+
+async function runChecks(type) {
+    const file = fileInput.files[0];
+
     if (!file) {
         alert("Upload file first");
         return;
     }
 
-    document.getElementById("status").innerText = "Running...";
-    document.getElementById("summary").classList.add("hidden");
-    document.getElementById("downloads").classList.add("hidden");
+    resetView();
+    setButtonsDisabled(true);
+
+    statusCard.classList.remove("hidden");
+    statusEl.innerText = getRunningMessage(type);
 
     const formData = new FormData();
     formData.append("file", file);
 
     const start = performance.now();
 
-    let endpoint = "";
-    if (type === "oig") endpoint = "/api/run-oig";
-    if (type === "cna") endpoint = "/api/run-cna";
-    if (type === "adverse") endpoint = "/api/run-adverse";
+    try {
+        const endpoint = getEndpoint(type);
 
-    const res = await fetch("https://workforcecomply-backend-docker.onrender.com" + endpoint, {
-        method: "POST",
-        body: formData
-    });
+        const res = await fetch("https://workforcecomply-backend-docker.onrender.com" + endpoint, {
+            method: "POST",
+            body: formData
+        });
 
-    const data = await res.json();
+        const data = await res.json();
 
-    const end = performance.now();
+        if (!res.ok) {
+            throw new Error(data.error || "Processing failed");
+        }
 
-    document.getElementById("status").innerText = "Complete";
+        const end = performance.now();
+        const seconds = ((end - start) / 1000).toFixed(1);
 
-    document.getElementById("summary").classList.remove("hidden");
-    document.getElementById("total").innerText = data.summary.total_employees;
-    document.getElementById("clear").innerText = data.summary.clear_count;
-    document.getElementById("flagged").innerText = data.summary.attention_needed;
-    document.getElementById("runtime").innerText = ((end - start)/1000).toFixed(1) + " sec";
+        statusEl.innerText = "Complete";
+        summary.classList.remove("hidden");
+        downloads.classList.remove("hidden");
 
-    document.getElementById("downloads").classList.remove("hidden");
+        totalEl.innerText = data.summary.total_employees;
+        clearEl.innerText = data.summary.clear_count;
+        flaggedEl.innerText = data.summary.attention_needed;
+        runtimeEl.innerText = seconds + " sec";
+        issuesLabel.innerText = getIssueLabel(type);
 
-    document.getElementById("zip").href = data.downloads.combined_pdf_url;
-    document.getElementById("excel").href = data.downloads.results_excel_url;
+        zipEl.href = data.downloads.combined_pdf_url;
+        excelEl.href = data.downloads.results_excel_url;
+
+        zipEl.innerText = getZipLabel(type);
+        excelEl.innerText = getExcelLabel(type);
+
+    } catch (error) {
+        statusEl.innerText = "Error: " + error.message;
+    } finally {
+        setButtonsDisabled(false);
+    }
 }
 </script>
 
