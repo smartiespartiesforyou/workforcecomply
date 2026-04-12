@@ -568,9 +568,7 @@ def make_response(run_id, employee_results):
             "attention_needed": flagged
         },
         "downloads": {
-            "combined_pdf_url": f"{BACKEND_BASE_URL}/api/download/{run_id}/zip",
-            "individual_zip_url": f"{BACKEND_BASE_URL}/api/download/{run_id}/zip",
-            "results_excel_url": f"{BACKEND_BASE_URL}/api/download/{run_id}/results-excel"
+            "zip_url": f"{BACKEND_BASE_URL}/api/download/{run_id}/zip"
         }
     })
 
@@ -701,23 +699,25 @@ def download_zip(run_id):
     if not zip_path or not os.path.exists(zip_path):
         return jsonify({"error": "ZIP file not found"}), 404
 
-    return send_file(zip_path, as_attachment=True)
+    response = send_file(
+        zip_path,
+        as_attachment=True,
+        download_name=os.path.basename(zip_path)
+    )
+
+    def cleanup():
+        try:
+            shutil.rmtree(run_folder)
+        except Exception:
+            pass
+
+    response.call_on_close(cleanup)
+    return response
 
 
 @app.route("/api/download/<run_id>/results-excel", methods=["GET"])
 def download_results_excel(run_id):
-    run_folder = os.path.join(RUNS_FOLDER, run_id)
-    results_excel_path = None
-
-    for f in os.listdir(run_folder):
-        if f.endswith(".xlsx"):
-            results_excel_path = os.path.join(run_folder, f)
-            break
-
-    if not results_excel_path or not os.path.exists(results_excel_path):
-        return jsonify({"error": "Results Excel file not found"}), 404
-
-    return send_file(results_excel_path, as_attachment=True)
+    return jsonify({"error": "Excel is included inside the ZIP file only"}), 410
 
 
 if __name__ == "__main__":
