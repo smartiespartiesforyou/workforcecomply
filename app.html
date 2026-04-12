@@ -59,7 +59,7 @@ body { font-family: 'Inter', sans-serif; }
             </p>
             <h1 class="text-3xl md:text-4xl font-bold tracking-tight">Run Compliance Checks Individually</h1>
             <p class="text-slate-600 mt-3 max-w-2xl mx-auto">
-                Upload your workforce file, run the check you need, and download a clean proof package for that specific run.
+                Upload your workforce file, run the check you need, and your final ZIP package will download automatically when the run finishes.
             </p>
         </div>
 
@@ -75,7 +75,7 @@ body { font-family: 'Inter', sans-serif; }
                     class="w-full border border-slate-300 bg-white p-3 rounded-xl"
                 >
                 <p class="text-sm text-slate-500 mt-2">
-                    Use one employee file per run.
+                    One ZIP package will be downloaded automatically for each run.
                 </p>
             </div>
 
@@ -133,15 +133,17 @@ body { font-family: 'Inter', sans-serif; }
                 </div>
             </div>
 
-            <div id="downloads" class="hidden">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <a id="zip"
-                       class="block bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-xl text-center font-semibold shadow-sm transition">
+            <div id="downloadBox" class="hidden rounded-2xl border border-blue-200 bg-blue-50 p-4">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div>
+                        <p class="font-semibold text-slate-900">ZIP package ready</p>
+                        <p class="text-sm text-slate-600">
+                            Your download should start automatically. If it does not, use the button.
+                        </p>
+                    </div>
+                    <a id="zipLink"
+                       class="inline-block bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-xl font-semibold text-center transition">
                         Download ZIP
-                    </a>
-                    <a id="excel"
-                       class="block bg-emerald-700 hover:bg-emerald-800 text-white p-4 rounded-xl text-center font-semibold shadow-sm transition">
-                        Download Excel
                     </a>
                 </div>
             </div>
@@ -157,16 +159,14 @@ const fileInput = document.getElementById("fileInput");
 const statusCard = document.getElementById("statusCard");
 const statusEl = document.getElementById("status");
 const summary = document.getElementById("summary");
-const downloads = document.getElementById("downloads");
+const downloadBox = document.getElementById("downloadBox");
 
 const totalEl = document.getElementById("total");
 const clearEl = document.getElementById("clear");
 const flaggedEl = document.getElementById("flagged");
 const runtimeEl = document.getElementById("runtime");
 const issuesLabel = document.getElementById("issuesLabel");
-
-const zipEl = document.getElementById("zip");
-const excelEl = document.getElementById("excel");
+const zipLink = document.getElementById("zipLink");
 
 const oigBtn = document.getElementById("oigBtn");
 const cnaBtn = document.getElementById("cnaBtn");
@@ -181,8 +181,10 @@ function setButtonsDisabled(disabled) {
 function resetView() {
     statusCard.classList.add("hidden");
     summary.classList.add("hidden");
-    downloads.classList.add("hidden");
+    downloadBox.classList.add("hidden");
     statusEl.innerText = "";
+    zipLink.removeAttribute("href");
+    zipLink.innerText = "Download ZIP";
 }
 
 function getEndpoint(type) {
@@ -206,18 +208,20 @@ function getZipLabel(type) {
     return "Download ZIP";
 }
 
-function getExcelLabel(type) {
-    if (type === "oig") return "Download OIG Excel";
-    if (type === "cna") return "Download CNA Excel";
-    if (type === "adverse") return "Download DSW Excel";
-    return "Download Excel";
-}
-
 function getRunningMessage(type) {
     if (type === "oig") return "Running OIG check...";
     if (type === "cna") return "Running CNA check...";
     if (type === "adverse") return "Running DSW check... this one usually takes longer.";
     return "Running...";
+}
+
+function startDownload(url) {
+    const tempLink = document.createElement("a");
+    tempLink.href = url;
+    tempLink.style.display = "none";
+    document.body.appendChild(tempLink);
+    tempLink.click();
+    document.body.removeChild(tempLink);
 }
 
 async function runChecks(type) {
@@ -258,7 +262,7 @@ async function runChecks(type) {
 
         statusEl.innerText = "Complete";
         summary.classList.remove("hidden");
-        downloads.classList.remove("hidden");
+        downloadBox.classList.remove("hidden");
 
         totalEl.innerText = data.summary.total_employees;
         clearEl.innerText = data.summary.clear_count;
@@ -266,11 +270,10 @@ async function runChecks(type) {
         runtimeEl.innerText = seconds + " sec";
         issuesLabel.innerText = getIssueLabel(type);
 
-        zipEl.href = data.downloads.combined_pdf_url;
-        excelEl.href = data.downloads.results_excel_url;
+        zipLink.href = data.downloads.zip_url;
+        zipLink.innerText = getZipLabel(type);
 
-        zipEl.innerText = getZipLabel(type);
-        excelEl.innerText = getExcelLabel(type);
+        startDownload(data.downloads.zip_url);
 
     } catch (error) {
         statusEl.innerText = "Error: " + error.message;
