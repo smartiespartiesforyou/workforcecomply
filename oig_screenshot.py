@@ -15,10 +15,25 @@ FIRST_NAME_SELECTOR = "#ctl00_cpExclusions_txtSPFirstName"
 SEARCH_BUTTON_SELECTOR = "#ctl00_cpExclusions_ibSearchSP"
 
 
-def safe_part(value):
+def clean_name(value):
     value = str(value).strip()
-    value = re.sub(r"[^A-Za-z0-9._-]+", "_", value)
-    return value.strip("_") or "employee"
+    value = re.sub(r"[^A-Za-z]", "", value)
+    return value
+
+
+def get_last4(ssn):
+    digits = re.sub(r"\D", "", str(ssn))
+    return digits[-4:] if len(digits) >= 4 else "0000"
+
+
+def build_oig_filename(first_name, last_name, ssn):
+    first_clean = clean_name(first_name)
+    last_clean = clean_name(last_name)
+    last4 = get_last4(ssn)
+
+    date_part = datetime.now().strftime("%Y-%m-%d")
+
+    return f"{first_clean}_{last_clean}_{last4}_{date_part}_OIG.pdf"
 
 
 def _ensure_session():
@@ -87,17 +102,11 @@ def _wait_for_results(page):
     return False
 
 
-def capture_oig(first_name, last_name, save_folder="proofs"):
+def capture_oig(first_name, last_name, ssn, save_folder="proofs"):
     os.makedirs(save_folder, exist_ok=True)
 
-    clean_first = safe_part(first_name)
-    clean_last = safe_part(last_name)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-
-    pdf_path = os.path.join(
-        save_folder,
-        f"OIG_{clean_first}_{clean_last}_{timestamp}.pdf"
-    )
+    filename = build_oig_filename(first_name, last_name, ssn)
+    pdf_path = os.path.join(save_folder, filename)
 
     page = _ensure_session()
 
