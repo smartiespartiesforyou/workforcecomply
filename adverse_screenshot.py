@@ -28,6 +28,26 @@ def clean_ssn(value):
     return f"{digits[:3]}-{digits[3:5]}-{digits[5:]}"
 
 
+def clean_name(value):
+    value = str(value).strip()
+    value = re.sub(r"[^A-Za-z]", "", value)
+    return value
+
+
+def get_last4(ssn):
+    digits = re.sub(r"\D", "", str(ssn))
+    return digits[-4:] if len(digits) >= 4 else "0000"
+
+
+def build_dsw_filename(first_name, last_name, ssn):
+    first_clean = clean_name(first_name)
+    last_clean = clean_name(last_name)
+    last4 = get_last4(ssn)
+    date_part = datetime.now().strftime("%Y-%m-%d")
+
+    return f"{first_clean}_{last_clean}_{last4}_{date_part}_DSW.pdf"
+
+
 async def _wait_for_results(page):
     for _ in range(40):
         try:
@@ -109,7 +129,6 @@ def _ensure_worker():
         _worker_thread = Thread(target=_start_worker_loop, daemon=True)
         _worker_thread.start()
 
-        # Wait until the loop exists
         while _worker_loop is None:
             pass
 
@@ -152,10 +171,10 @@ async def _capture_adverse_async(first_name, last_name, ssn="", save_folder="pro
     if not clean:
         return {"pdf_path": None, "error": "Invalid SSN"}
 
-    await _ensure_browser()
+    filename = build_dsw_filename(first_name, last_name, ssn)
+    pdf_path = os.path.join(save_folder, filename)
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-    pdf_path = os.path.join(save_folder, f"ADVERSE_{clean}_{timestamp}.pdf")
+    await _ensure_browser()
 
     page = await _context.new_page()
     page.set_default_timeout(60000)
@@ -178,15 +197,6 @@ async def _capture_adverse_async(first_name, last_name, ssn="", save_folder="pro
         await search_button.click()
 
         await _wait_for_results(page)
-
-        try:
-            ssn_box = page.locator(SSN_SELECTOR)
-            await ssn_box.evaluate(
-                "(el, value) => { el.value = value; el.setAttribute('value', value); }",
-                clean
-            )
-        except Exception:
-            pass
 
         await page.emulate_media(media="screen")
         await page.pdf(
