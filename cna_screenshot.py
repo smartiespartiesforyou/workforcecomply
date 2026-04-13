@@ -33,7 +33,6 @@ def build_cna_filename(first_name, last_name, ssn):
     last_clean = clean_name(last_name)
     last4 = get_last4(ssn)
     date_part = datetime.now().strftime("%Y-%m-%d")
-
     return f"{first_clean}_{last_clean}_{last4}_{date_part}_CNA.pdf"
 
 
