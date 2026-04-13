@@ -17,6 +17,26 @@ def clean_ssn(value):
     return f"{digits[:3]}-{digits[3:5]}-{digits[5:]}"
 
 
+def clean_name(value):
+    value = str(value).strip()
+    value = re.sub(r"[^A-Za-z]", "", value)
+    return value
+
+
+def get_last4(ssn):
+    digits = re.sub(r"\D", "", str(ssn))
+    return digits[-4:] if len(digits) >= 4 else "0000"
+
+
+def build_cna_filename(first_name, last_name, ssn):
+    first_clean = clean_name(first_name)
+    last_clean = clean_name(last_name)
+    last4 = get_last4(ssn)
+    date_part = datetime.now().strftime("%Y-%m-%d")
+
+    return f"{first_clean}_{last_clean}_{last4}_{date_part}_CNA.pdf"
+
+
 def classify_cna_result(page_text):
     text = (page_text or "").lower()
 
@@ -71,7 +91,7 @@ async def _open_cna_page(page):
     raise last_error
 
 
-async def _capture_cna_async(ssn, save_folder="proofs"):
+async def _capture_cna_async(first_name, last_name, ssn, save_folder="proofs"):
     os.makedirs(save_folder, exist_ok=True)
 
     clean = clean_ssn(ssn)
@@ -82,8 +102,8 @@ async def _capture_cna_async(ssn, save_folder="proofs"):
             "cna_result": "invalid_ssn"
         }
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-    pdf_path = os.path.join(save_folder, f"CNA_{clean}_{timestamp}.pdf")
+    filename = build_cna_filename(first_name, last_name, ssn)
+    pdf_path = os.path.join(save_folder, filename)
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(
@@ -177,8 +197,8 @@ def _run_async_in_thread(coro):
     return result.get("value")
 
 
-def capture_cna(ssn, save_folder="proofs"):
-    return _run_async_in_thread(_capture_cna_async(ssn, save_folder))
+def capture_cna(first_name, last_name, ssn, save_folder="proofs"):
+    return _run_async_in_thread(_capture_cna_async(first_name, last_name, ssn, save_folder))
 
 
 def close_cna_session():
