@@ -170,8 +170,8 @@ def build_zip(run_folder, zip_path, include_folders, excel_filename):
                     z.write(full_path, relative_path)
 
 
-def run_oig_safe(first, last, save_folder):
-    return capture_oig(first, last, save_folder)
+def run_oig_safe(first, last, ssn, save_folder):
+    return capture_oig(first, last, ssn, save_folder)
 
 
 def run_cna_safe(first, last, ssn, save_folder):
@@ -230,7 +230,7 @@ def process_combined_run(df, run_folder):
             }
 
             try:
-                oig_result = run_oig_safe(first, last, oig_folder)
+                oig_result = run_oig_safe(first, last, ssn, oig_folder)
                 oig_pdf = oig_result.get("pdf_path")
 
                 if oig_pdf:
@@ -363,7 +363,7 @@ def process_oig_only_run(df, run_folder):
             }
 
             try:
-                oig_result = run_oig_safe(first, last, oig_folder)
+                oig_result = run_oig_safe(first, last, ssn, oig_folder)
                 oig_pdf = oig_result.get("pdf_path")
 
                 if oig_pdf:
