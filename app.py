@@ -174,8 +174,8 @@ def run_oig_safe(first, last, save_folder):
     return capture_oig(first, last, save_folder)
 
 
-def run_cna_safe(ssn, save_folder):
-    return capture_cna(ssn, save_folder)
+def run_cna_safe(first, last, ssn, save_folder):
+    return capture_cna(first, last, ssn, save_folder)
 
 
 def run_adverse_safe(first, last, ssn, save_folder):
@@ -248,7 +248,7 @@ def process_combined_run(df, run_folder):
                 employee["issues"].append("ERROR - INVALID SSN FOR CNA")
             else:
                 try:
-                    cna_result = run_cna_safe(ssn, cna_folder)
+                    cna_result = run_cna_safe(first, last, ssn, cna_folder)
                     cna_pdf = cna_result.get("pdf_path")
                     cna_status = cna_result.get("cna_result", "")
 
@@ -427,7 +427,7 @@ def process_cna_only_run(df, run_folder):
                 employee["issues"].append("ERROR - INVALID SSN FOR CNA")
             else:
                 try:
-                    cna_result = run_cna_safe(ssn, cna_folder)
+                    cna_result = run_cna_safe(first, last, ssn, cna_folder)
                     cna_pdf = cna_result.get("pdf_path")
                     cna_status = cna_result.get("cna_result", "")
 
