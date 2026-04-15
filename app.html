@@ -43,6 +43,54 @@ body { font-family: 'Inter', sans-serif; }
   cursor: not-allowed;
   transform: none;
 }
+
+.state-card {
+  border-radius: 16px;
+  padding: 1rem 1.25rem;
+  text-align: left;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+  border: 1px solid #e5e7eb;
+  background: white;
+}
+
+.state-card:hover {
+  transform: translateY(-2px);
+}
+
+.state-card.active {
+  background: #0f172a;
+  color: white;
+  border-color: #0f172a;
+}
+
+.state-card.active .state-subtext {
+  color: #cbd5e1;
+}
+
+.state-subtext {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: #64748b;
+}
+
+.state-note {
+  border: 1px solid #dbeafe;
+  background: #eff6ff;
+  color: #1e3a8a;
+  border-radius: 16px;
+  padding: 1rem;
+}
+
+.coming-soon-box {
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  border-radius: 18px;
+  padding: 1.25rem;
+}
 </style>
 
 </head>
@@ -71,22 +119,75 @@ body { font-family: 'Inter', sans-serif; }
 </nav>
 
 <div class="min-h-screen px-6 py-10">
-
     <div class="max-w-5xl mx-auto">
 
         <div class="text-center mb-8">
             <p class="text-sm uppercase tracking-[0.25em] text-blue-600 font-semibold mb-3">
                 WorkforceComply
             </p>
-            <h1 class="text-3xl md:text-4xl font-bold tracking-tight">Run Compliance Checks Individually</h1>
+            <h1 class="text-3xl md:text-4xl font-bold tracking-tight">Run Compliance Checks by State</h1>
             <p class="text-slate-600 mt-3 max-w-2xl mx-auto">
-                Upload your workforce file, run the check you need, and your final ZIP package will download automatically when the run finishes.
+                Select your state first so you are directed to the correct compliance workflow.
             </p>
         </div>
 
-        <div class="soft-card p-6 md:p-8">
+        <!-- STATE SELECTION -->
+        <div class="soft-card p-6 md:p-8 mb-8">
+            <div class="mb-6">
+                <h2 class="text-xl font-bold text-slate-900">Choose Your State</h2>
+                <p class="text-slate-600 mt-2">
+                    Louisiana is active now. Other states can have their own dedicated compliance pages as you add them.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+                <button
+                    id="louisianaBtn"
+                    type="button"
+                    class="state-card active"
+                    onclick="setState('LA')"
+                >
+                    Louisiana
+                    <span class="state-subtext">Current live workflow</span>
+                </button>
+
+                <div class="state-card">
+                    <label for="stateSelect" class="block text-base font-semibold text-slate-900 mb-2">
+                        Other States
+                    </label>
+                    <select
+                        id="stateSelect"
+                        class="w-full border border-slate-300 bg-white p-3 rounded-xl text-slate-900"
+                        onchange="handleStateRedirect()"
+                    >
+                        <option value="">Select a state</option>
+                        <option value="TX">Texas</option>
+                        <option value="FL">Florida</option>
+                        <option value="MS">Mississippi</option>
+                        <option value="AL">Alabama</option>
+                        <option value="AR">Arkansas</option>
+                        <option value="GA">Georgia</option>
+                    </select>
+                    <span class="state-subtext">Send users to their state-specific page</span>
+                </div>
+            </div>
+
+            <div class="state-note">
+                <div class="font-semibold">Active state: <span id="activeStateLabel">Louisiana</span></div>
+                <div class="text-sm mt-1">
+                    This page currently runs Louisiana compliance checks only.
+                </div>
+            </div>
+        </div>
+
+        <!-- LOUISIANA APP -->
+        <div id="louisianaApp" class="soft-card p-6 md:p-8">
 
             <div class="mb-6">
+                <div class="inline-flex items-center rounded-full bg-blue-100 text-blue-700 px-3 py-1 text-xs font-semibold uppercase tracking-wide mb-3">
+                    Louisiana Compliance Checks
+                </div>
+
                 <label for="fileInput" class="block text-sm font-semibold text-slate-700 mb-2">
                     Upload Excel File
                 </label>
@@ -171,8 +272,44 @@ body { font-family: 'Inter', sans-serif; }
 
         </div>
 
-    </div>
+        <!-- NON-LOUISIANA MESSAGE -->
+        <div id="otherStateBox" class="hidden soft-card p-6 md:p-8">
+            <div class="coming-soon-box">
+                <div class="inline-flex items-center rounded-full bg-amber-100 text-amber-700 px-3 py-1 text-xs font-semibold uppercase tracking-wide mb-3">
+                    State Page Needed
+                </div>
 
+                <h2 class="text-2xl font-bold text-slate-900 mb-2">This state should use its own page</h2>
+                <p class="text-slate-600 mb-4">
+                    The current app page is set up for Louisiana only. Create a dedicated page for this state and send users there.
+                </p>
+
+                <div class="bg-white border border-slate-200 rounded-2xl p-4 mb-4">
+                    <div class="text-sm uppercase tracking-wide text-slate-500 mb-1">Selected State</div>
+                    <div id="selectedStateText" class="text-lg font-bold text-slate-900">Not selected</div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <button
+                        type="button"
+                        onclick="goToSelectedStatePage()"
+                        class="bg-slate-900 hover:bg-slate-800 text-white px-5 py-3 rounded-xl font-semibold transition"
+                    >
+                        Go to State Page
+                    </button>
+
+                    <button
+                        type="button"
+                        onclick="setState('LA')"
+                        class="border border-slate-300 bg-white hover:bg-slate-50 text-slate-900 px-5 py-3 rounded-xl font-semibold transition"
+                    >
+                        Back to Louisiana
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
 </div>
 
 <script>
@@ -192,6 +329,35 @@ const zipLink = document.getElementById("zipLink");
 const oigBtn = document.getElementById("oigBtn");
 const cnaBtn = document.getElementById("cnaBtn");
 const dswBtn = document.getElementById("dswBtn");
+
+const louisianaBtn = document.getElementById("louisianaBtn");
+const stateSelect = document.getElementById("stateSelect");
+const activeStateLabel = document.getElementById("activeStateLabel");
+const louisianaApp = document.getElementById("louisianaApp");
+const otherStateBox = document.getElementById("otherStateBox");
+const selectedStateText = document.getElementById("selectedStateText");
+
+let selectedState = "LA";
+
+const statePageMap = {
+    LA: "app.html",
+    TX: "texas.html",
+    FL: "florida.html",
+    MS: "mississippi.html",
+    AL: "alabama.html",
+    AR: "arkansas.html",
+    GA: "georgia.html"
+};
+
+const stateNameMap = {
+    LA: "Louisiana",
+    TX: "Texas",
+    FL: "Florida",
+    MS: "Mississippi",
+    AL: "Alabama",
+    AR: "Arkansas",
+    GA: "Georgia"
+};
 
 function setButtonsDisabled(disabled) {
     [oigBtn, cnaBtn, dswBtn].forEach(btn => {
@@ -245,7 +411,55 @@ function startDownload(url) {
     document.body.removeChild(tempLink);
 }
 
+function setState(stateCode) {
+    selectedState = stateCode;
+
+    if (stateCode === "LA") {
+        louisianaBtn.classList.add("active");
+        stateSelect.value = "";
+        activeStateLabel.innerText = "Louisiana";
+        louisianaApp.classList.remove("hidden");
+        otherStateBox.classList.add("hidden");
+        selectedStateText.innerText = "Louisiana";
+    } else {
+        louisianaBtn.classList.remove("active");
+        activeStateLabel.innerText = stateNameMap[stateCode] || "Selected State";
+        louisianaApp.classList.add("hidden");
+        otherStateBox.classList.remove("hidden");
+        selectedStateText.innerText = stateNameMap[stateCode] || "Selected State";
+    }
+}
+
+function handleStateRedirect() {
+    const value = stateSelect.value;
+
+    if (!value) {
+        setState("LA");
+        return;
+    }
+
+    setState(value);
+    goToSelectedStatePage();
+}
+
+function goToSelectedStatePage() {
+    if (!selectedState || selectedState === "LA") {
+        return;
+    }
+
+    const targetPage = statePageMap[selectedState];
+
+    if (targetPage) {
+        window.location.href = targetPage;
+    }
+}
+
 async function runChecks(type) {
+    if (selectedState !== "LA") {
+        alert("This page only runs Louisiana checks.");
+        return;
+    }
+
     const file = fileInput.files[0];
 
     if (!file) {
@@ -261,6 +475,7 @@ async function runChecks(type) {
 
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("state", selectedState);
 
     const start = performance.now();
 
@@ -302,6 +517,8 @@ async function runChecks(type) {
         setButtonsDisabled(false);
     }
 }
+
+setState("LA");
 </script>
 
 </body>
