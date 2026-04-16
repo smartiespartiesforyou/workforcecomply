@@ -10,7 +10,16 @@
 
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WorkforceComply App</title>
+
+<link rel="canonical" href="https://www.workforcecomply.com/app.html" />
+
+<title>Healthcare Compliance App | WorkforceComply</title>
+<meta name="description" content="Run healthcare compliance checks by state with WorkforceComply. Louisiana workflows are active now with OIG, CNA registry, and adverse action screening.">
+
+<meta property="og:title" content="WorkforceComply App">
+<meta property="og:description" content="Run healthcare compliance checks by state with WorkforceComply.">
+<meta property="og:url" content="https://www.workforcecomply.com/app.html">
+<meta property="og:type" content="website">
 
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -97,18 +106,17 @@ body { font-family: 'Inter', sans-serif; }
 
 <body class="bg-slate-100 text-slate-900">
 
-<!-- NAV -->
 <nav class="flex items-center justify-between px-8 py-4 bg-[#0f172a] text-white">
 
-    <a href="index.html" class="flex items-center gap-2">
+    <a href="https://www.workforcecomply.com/" class="flex items-center gap-2">
         <div class="bg-blue-600 w-10 h-10 flex items-center justify-center rounded-lg font-bold">W</div>
         <span class="text-xl font-semibold tracking-tight">WorkforceComply</span>
     </a>
 
     <div class="hidden md:flex items-center gap-6 text-sm font-medium">
-        <a href="index.html" class="hover:text-gray-300">Home</a>
-        <a href="how-it-works.html" class="hover:text-gray-300">How it Works</a>
-        <a href="pricing.html" class="hover:text-gray-300">Pricing</a>
+        <a href="https://www.workforcecomply.com/" class="hover:text-gray-300">Home</a>
+        <a href="https://www.workforcecomply.com/how-it-works.html" class="hover:text-gray-300">How it Works</a>
+        <a href="https://www.workforcecomply.com/pricing.html" class="hover:text-gray-300">Pricing</a>
 
         <button data-ms-action="logout"
             class="border border-white px-4 py-2 rounded-lg hover:bg-white hover:text-blue-600">
@@ -131,7 +139,6 @@ body { font-family: 'Inter', sans-serif; }
             </p>
         </div>
 
-        <!-- STATE SELECTION -->
         <div class="soft-card p-6 md:p-8 mb-8">
             <div class="mb-6">
                 <h2 class="text-xl font-bold text-slate-900">Choose Your State</h2>
@@ -180,7 +187,6 @@ body { font-family: 'Inter', sans-serif; }
             </div>
         </div>
 
-        <!-- LOUISIANA APP -->
         <div id="louisianaApp" class="soft-card p-6 md:p-8">
 
             <div class="mb-6">
@@ -272,7 +278,6 @@ body { font-family: 'Inter', sans-serif; }
 
         </div>
 
-        <!-- NON-LOUISIANA MESSAGE -->
         <div id="otherStateBox" class="hidden soft-card p-6 md:p-8">
             <div class="coming-soon-box">
                 <div class="inline-flex items-center rounded-full bg-amber-100 text-amber-700 px-3 py-1 text-xs font-semibold uppercase tracking-wide mb-3">
@@ -340,13 +345,13 @@ const selectedStateText = document.getElementById("selectedStateText");
 let selectedState = "LA";
 
 const statePageMap = {
-    LA: "app.html",
-    TX: "texas.html",
-    FL: "florida.html",
-    MS: "mississippi.html",
-    AL: "alabama.html",
-    AR: "arkansas.html",
-    GA: "georgia.html"
+    LA: "https://www.workforcecomply.com/app.html",
+    TX: "https://www.workforcecomply.com/texas.html",
+    FL: "https://www.workforcecomply.com/florida.html",
+    MS: "https://www.workforcecomply.com/mississippi.html",
+    AL: "https://www.workforcecomply.com/alabama.html",
+    AR: "https://www.workforcecomply.com/arkansas.html",
+    GA: "https://www.workforcecomply.com/georgia.html"
 };
 
 const stateNameMap = {
