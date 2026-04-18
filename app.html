@@ -200,6 +200,7 @@ body { font-family: 'Inter', sans-serif; }
                 <input
                     id="fileInput"
                     type="file"
+                    accept=".xlsx,.xls"
                     class="w-full border border-slate-300 bg-white p-3 rounded-xl"
                 >
                 <p class="text-sm text-slate-500 mt-2">
@@ -269,10 +270,11 @@ body { font-family: 'Inter', sans-serif; }
                             Your download should start automatically. If it does not, use the button.
                         </p>
                     </div>
-                    <a id="zipLink"
+                    <button id="zipLink"
+                       type="button"
                        class="inline-block bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-xl font-semibold text-center transition">
                         Download ZIP
-                    </a>
+                    </button>
                 </div>
             </div>
 
@@ -318,6 +320,9 @@ body { font-family: 'Inter', sans-serif; }
 </div>
 
 <script>
+const BACKEND_BASE_URL = "https://workforcecomply-backend-docker.onrender.com";
+const API_KEY = "wf_9x8K2mPq7Tz_secure_2026";
+
 const fileInput = document.getElementById("fileInput");
 const statusCard = document.getElementById("statusCard");
 const statusEl = document.getElementById("status");
@@ -343,6 +348,7 @@ const otherStateBox = document.getElementById("otherStateBox");
 const selectedStateText = document.getElementById("selectedStateText");
 
 let selectedState = "LA";
+let latestZipUrl = "";
 
 const statePageMap = {
     LA: "https://www.workforcecomply.com/app.html",
@@ -375,8 +381,8 @@ function resetView() {
     summary.classList.add("hidden");
     downloadBox.classList.add("hidden");
     statusEl.innerText = "";
-    zipLink.removeAttribute("href");
     zipLink.innerText = "Download ZIP";
+    latestZipUrl = "";
 }
 
 function getEndpoint(type) {
@@ -405,15 +411,6 @@ function getRunningMessage(type) {
     if (type === "cna") return "Running CNA check...";
     if (type === "adverse") return "Running DSW check... this one usually takes longer.";
     return "Running...";
-}
-
-function startDownload(url) {
-    const tempLink = document.createElement("a");
-    tempLink.href = url;
-    tempLink.style.display = "none";
-    document.body.appendChild(tempLink);
-    tempLink.click();
-    document.body.removeChild(tempLink);
 }
 
 function setState(stateCode) {
@@ -459,6 +456,44 @@ function goToSelectedStatePage() {
     }
 }
 
+async function parseJsonSafely(res) {
+    const text = await res.text();
+
+    try {
+        return text ? JSON.parse(text) : {};
+    } catch (_error) {
+        throw new Error("Server returned an invalid response");
+    }
+}
+
+async function downloadZipFile(url, buttonLabel) {
+    const response = await fetch(url, {
+        method: "GET",
+        headers: {
+            "x-api-key": API_KEY
+        }
+    });
+
+    if (!response.ok) {
+        const data = await parseJsonSafely(response);
+        throw new Error(data.error || "Download failed");
+    }
+
+    const blob = await response.blob();
+    const tempLink = document.createElement("a");
+    const objectUrl = window.URL.createObjectURL(blob);
+
+    tempLink.href = objectUrl;
+    tempLink.download = "workforcecomply-report.zip";
+    tempLink.style.display = "none";
+    document.body.appendChild(tempLink);
+    tempLink.click();
+    document.body.removeChild(tempLink);
+
+    window.URL.revokeObjectURL(objectUrl);
+    zipLink.innerText = buttonLabel;
+}
+
 async function runChecks(type) {
     if (selectedState !== "LA") {
         alert("This page only runs Louisiana checks.");
@@ -469,6 +504,12 @@ async function runChecks(type) {
 
     if (!file) {
         alert("Upload file first");
+        return;
+    }
+
+    const lowerName = (file.name || "").toLowerCase();
+    if (!lowerName.endsWith(".xlsx") && !lowerName.endsWith(".xls")) {
+        alert("Only Excel files (.xlsx or .xls) are allowed.");
         return;
     }
 
@@ -487,12 +528,15 @@ async function runChecks(type) {
     try {
         const endpoint = getEndpoint(type);
 
-        const res = await fetch("https://workforcecomply-backend-docker.onrender.com" + endpoint, {
+        const res = await fetch(BACKEND_BASE_URL + endpoint, {
             method: "POST",
+            headers: {
+                "x-api-key": API_KEY
+            },
             body: formData
         });
 
-        const data = await res.json();
+        const data = await parseJsonSafely(res);
 
         if (!res.ok) {
             throw new Error(data.error || "Processing failed");
@@ -511,10 +555,10 @@ async function runChecks(type) {
         runtimeEl.innerText = seconds + " sec";
         issuesLabel.innerText = getIssueLabel(type);
 
-        zipLink.href = data.downloads.zip_url;
+        latestZipUrl = data.downloads.zip_url;
         zipLink.innerText = getZipLabel(type);
 
-        startDownload(data.downloads.zip_url);
+        await downloadZipFile(latestZipUrl, getZipLabel(type));
 
     } catch (error) {
         statusEl.innerText = "Error: " + error.message;
@@ -522,6 +566,24 @@ async function runChecks(type) {
         setButtonsDisabled(false);
     }
 }
+
+zipLink.addEventListener("click", async function () {
+    if (!latestZipUrl) {
+        return;
+    }
+
+    try {
+        setButtonsDisabled(true);
+        statusCard.classList.remove("hidden");
+        statusEl.innerText = "Downloading ZIP...";
+        await downloadZipFile(latestZipUrl, zipLink.innerText);
+        statusEl.innerText = "Complete";
+    } catch (error) {
+        statusEl.innerText = "Error: " + error.message;
+    } finally {
+        setButtonsDisabled(false);
+    }
+});
 
 setState("LA");
 </script>
