@@ -1,10 +1,12 @@
 from flask import Flask, request, send_file, jsonify
 from flask_cors import CORS
+from werkzeug.utils import secure_filename
 import pandas as pd
 import os
 import re
 import zipfile
 import shutil
+import secrets
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor
 from PyPDF2 import PdfMerger
@@ -14,13 +16,26 @@ from cna_screenshot import capture_cna, close_cna_session
 from adverse_screenshot import capture_adverse, close_adverse_session
 
 app = Flask(__name__)
-CORS(app, resources={r"/api/*": {"origins": "*"}})
+
+ALLOWED_ORIGINS = [
+    "https://www.workforcecomply.com",
+    "https://workforcecomply.com"
+]
+
+CORS(
+    app,
+    resources={r"/api/*": {"origins": ALLOWED_ORIGINS}},
+)
 
 UPLOAD_FOLDER = "uploads"
 RUNS_FOLDER = "runs"
 BACKEND_BASE_URL = "https://workforcecomply-backend-docker.onrender.com"
+API_KEY = os.environ.get("API_KEY", "").strip()
 
 COMBINED_WORKERS = 3
+ALLOWED_EXTENSIONS = {".xlsx", ".xls"}
+MAX_UPLOAD_MB = 10
+app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_MB * 1024 * 1024
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(RUNS_FOLDER, exist_ok=True)
@@ -36,6 +51,15 @@ def clean_ssn(value):
     return re.sub(r"\D", "", safe_text(value))
 
 
+def allowed_file(filename):
+    ext = os.path.splitext(filename or "")[1].lower()
+    return ext in ALLOWED_EXTENSIONS
+
+
+def generate_run_id():
+    return secrets.token_urlsafe(24)
+
+
 def cleanup_old_runs(folder, days=2):
     now = datetime.now()
     for name in os.listdir(folder):
@@ -45,6 +69,19 @@ def cleanup_old_runs(folder, days=2):
                 created = datetime.fromtimestamp(os.path.getctime(path))
                 if now - created > timedelta(days=days):
                     shutil.rmtree(path)
+            except Exception:
+                pass
+
+
+def cleanup_old_uploads(folder, days=2):
+    now = datetime.now()
+    for name in os.listdir(folder):
+        path = os.path.join(folder, name)
+        if os.path.isfile(path):
+            try:
+                created = datetime.fromtimestamp(os.path.getctime(path))
+                if now - created > timedelta(days=days):
+                    os.remove(path)
             except Exception:
                 pass
 
@@ -182,9 +219,27 @@ def run_adverse_safe(first, last, ssn, save_folder):
     return capture_adverse(first, last, ssn, save_folder)
 
 
-def prepare_upload(file, run_id):
-    upload_name = os.path.basename(file.filename)
-    upload_path = os.path.join(UPLOAD_FOLDER, f"{run_id}_{upload_name}")
+def require_api_key():
+    expected = API_KEY
+    provided = request.headers.get("x-api-key", "").strip()
+
+    if not expected:
+        return jsonify({"error": "Server configuration error"}), 500
+
+    if not provided or provided != expected:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    return None
+
+
+def prepare_upload(file, run_folder):
+    original_name = secure_filename(file.filename or "")
+    ext = os.path.splitext(original_name)[1].lower()
+
+    if ext not in ALLOWED_EXTENSIONS:
+        raise ValueError("Only Excel files (.xlsx or .xls) are allowed")
+
+    upload_path = os.path.join(run_folder, f"input{ext}")
     file.save(upload_path)
     return upload_path
 
@@ -238,11 +293,11 @@ def process_combined_run(df, run_folder):
                 else:
                     error = oig_result.get("error")
                     if error:
-                        employee["issues"].append(f"REVIEW NEEDED - OIG ERROR: {error}")
+                        employee["issues"].append("REVIEW NEEDED - OIG ERROR")
                     else:
                         employee["issues"].append("REVIEW NEEDED - OIG PROOF MISSING")
-            except Exception as e:
-                employee["issues"].append(f"REVIEW NEEDED - OIG ERROR: {str(e)}")
+            except Exception:
+                employee["issues"].append("REVIEW NEEDED - OIG ERROR")
 
             if len(ssn) != 9:
                 employee["issues"].append("ERROR - INVALID SSN FOR CNA")
@@ -260,14 +315,10 @@ def process_combined_run(df, run_folder):
                     elif cna_status == "review_needed":
                         employee["issues"].append("REVIEW NEEDED - CNA REVIEW")
                     elif cna_status == "error":
-                        error = cna_result.get("error")
-                        if error:
-                            employee["issues"].append(f"REVIEW NEEDED - CNA ERROR: {error}")
-                        else:
-                            employee["issues"].append("REVIEW NEEDED - CNA ERROR")
+                        employee["issues"].append("REVIEW NEEDED - CNA ERROR")
 
-                except Exception as e:
-                    employee["issues"].append(f"REVIEW NEEDED - CNA ERROR: {str(e)}")
+                except Exception:
+                    employee["issues"].append("REVIEW NEEDED - CNA ERROR")
 
             if len(ssn) != 9:
                 employee["issues"].append("ERROR - INVALID SSN FOR ADVERSE")
@@ -292,20 +343,12 @@ def process_combined_run(df, run_folder):
                         detail = safe_text(adverse_result.get("detail")) or "ADVERSE ACTION FOUND"
                         employee["issues"].append(f"REVIEW NEEDED - ADVERSE: {detail}")
                     elif adverse_status == "error":
-                        error = adverse_result.get("error")
-                        if error:
-                            employee["issues"].append(f"REVIEW NEEDED - ADVERSE ERROR: {error}")
-                        else:
-                            employee["issues"].append("REVIEW NEEDED - ADVERSE ERROR")
+                        employee["issues"].append("REVIEW NEEDED - ADVERSE ERROR")
                     elif not adverse_pdf:
-                        error = adverse_result.get("error")
-                        if error:
-                            employee["issues"].append(f"REVIEW NEEDED - ADVERSE ERROR: {error}")
-                        else:
-                            employee["issues"].append("REVIEW NEEDED - ADVERSE PROOF MISSING")
+                        employee["issues"].append("REVIEW NEEDED - ADVERSE PROOF MISSING")
 
-                except Exception as e:
-                    employee["issues"].append(f"REVIEW NEEDED - ADVERSE ERROR: {str(e)}")
+                except Exception:
+                    employee["issues"].append("REVIEW NEEDED - ADVERSE ERROR")
 
             if employee["issues"]:
                 employee["flagged"] = True
@@ -371,11 +414,11 @@ def process_oig_only_run(df, run_folder):
                 else:
                     error = oig_result.get("error")
                     if error:
-                        employee["issues"].append(f"REVIEW NEEDED - OIG ERROR: {error}")
+                        employee["issues"].append("REVIEW NEEDED - OIG ERROR")
                     else:
                         employee["issues"].append("REVIEW NEEDED - OIG PROOF MISSING")
-            except Exception as e:
-                employee["issues"].append(f"REVIEW NEEDED - OIG ERROR: {str(e)}")
+            except Exception:
+                employee["issues"].append("REVIEW NEEDED - OIG ERROR")
 
             if employee["issues"]:
                 employee["flagged"] = True
@@ -439,14 +482,10 @@ def process_cna_only_run(df, run_folder):
                     elif cna_status == "review_needed":
                         employee["issues"].append("REVIEW NEEDED - CNA REVIEW")
                     elif cna_status == "error":
-                        error = cna_result.get("error")
-                        if error:
-                            employee["issues"].append(f"REVIEW NEEDED - CNA ERROR: {error}")
-                        else:
-                            employee["issues"].append("REVIEW NEEDED - CNA ERROR")
+                        employee["issues"].append("REVIEW NEEDED - CNA ERROR")
 
-                except Exception as e:
-                    employee["issues"].append(f"REVIEW NEEDED - CNA ERROR: {str(e)}")
+                except Exception:
+                    employee["issues"].append("REVIEW NEEDED - CNA ERROR")
 
             if employee["issues"]:
                 employee["flagged"] = True
@@ -511,20 +550,12 @@ def process_adverse_only_run(df, run_folder):
                     detail = safe_text(adverse_result.get("detail")) or "ADVERSE ACTION FOUND"
                     employee["issues"].append(f"REVIEW NEEDED - ADVERSE: {detail}")
                 elif adverse_status == "error":
-                    error = adverse_result.get("error")
-                    if error:
-                        employee["issues"].append(f"REVIEW NEEDED - ADVERSE ERROR: {error}")
-                    else:
-                        employee["issues"].append("REVIEW NEEDED - ADVERSE ERROR")
+                    employee["issues"].append("REVIEW NEEDED - ADVERSE ERROR")
                 elif not adverse_pdf:
-                    error = adverse_result.get("error")
-                    if error:
-                        employee["issues"].append(f"REVIEW NEEDED - ADVERSE ERROR: {error}")
-                    else:
-                        employee["issues"].append("REVIEW NEEDED - ADVERSE PROOF MISSING")
+                    employee["issues"].append("REVIEW NEEDED - ADVERSE PROOF MISSING")
 
-            except Exception as e:
-                employee["issues"].append(f"REVIEW NEEDED - ADVERSE ERROR: {str(e)}")
+            except Exception:
+                employee["issues"].append("REVIEW NEEDED - ADVERSE ERROR")
 
         if employee["issues"]:
             employee["flagged"] = True
@@ -573,6 +604,11 @@ def make_response(run_id, employee_results):
     })
 
 
+@app.errorhandler(413)
+def too_large(_error):
+    return jsonify({"error": f"File too large. Maximum size is {MAX_UPLOAD_MB} MB."}), 413
+
+
 @app.route("/", methods=["GET"])
 def home():
     return jsonify({"status": "ok", "message": "WorkforceComply backend is running"})
@@ -585,106 +621,182 @@ def health():
 
 @app.route("/api/run-checks", methods=["POST"])
 def run_checks():
+    auth_error = require_api_key()
+    if auth_error:
+        return auth_error
+
     cleanup_old_runs(RUNS_FOLDER)
+    cleanup_old_uploads(UPLOAD_FOLDER)
 
     file = request.files.get("file")
     if not file or file.filename == "":
         return jsonify({"error": "No file selected"}), 400
 
-    run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+    if not allowed_file(file.filename):
+        return jsonify({"error": "Only Excel files (.xlsx or .xls) are allowed"}), 400
+
+    run_id = generate_run_id()
     run_folder = os.path.join(RUNS_FOLDER, run_id)
     os.makedirs(run_folder, exist_ok=True)
 
-    upload_path = prepare_upload(file, run_id)
+    upload_path = None
 
     try:
+        upload_path = prepare_upload(file, run_folder)
         df = read_input_dataframe(upload_path)
+        employee_results = process_combined_run(df, run_folder)
+        return make_response(run_id, employee_results)
     except ValueError as e:
+        if os.path.exists(run_folder):
+            shutil.rmtree(run_folder, ignore_errors=True)
         return jsonify({"error": str(e)}), 400
-    except Exception as e:
-        return jsonify({"error": f"Could not read Excel file: {e}"}), 400
-
-    employee_results = process_combined_run(df, run_folder)
-    return make_response(run_id, employee_results)
+    except Exception:
+        if os.path.exists(run_folder):
+            shutil.rmtree(run_folder, ignore_errors=True)
+        return jsonify({"error": "Processing failed"}), 500
+    finally:
+        if upload_path and os.path.exists(upload_path):
+            try:
+                os.remove(upload_path)
+            except Exception:
+                pass
 
 
 @app.route("/api/run-oig", methods=["POST"])
 def run_oig_only():
+    auth_error = require_api_key()
+    if auth_error:
+        return auth_error
+
     cleanup_old_runs(RUNS_FOLDER)
+    cleanup_old_uploads(UPLOAD_FOLDER)
 
     file = request.files.get("file")
     if not file or file.filename == "":
         return jsonify({"error": "No file selected"}), 400
 
-    run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+    if not allowed_file(file.filename):
+        return jsonify({"error": "Only Excel files (.xlsx or .xls) are allowed"}), 400
+
+    run_id = generate_run_id()
     run_folder = os.path.join(RUNS_FOLDER, run_id)
     os.makedirs(run_folder, exist_ok=True)
 
-    upload_path = prepare_upload(file, run_id)
+    upload_path = None
 
     try:
+        upload_path = prepare_upload(file, run_folder)
         df = read_input_dataframe(upload_path)
+        employee_results = process_oig_only_run(df, run_folder)
+        return make_response(run_id, employee_results)
     except ValueError as e:
+        if os.path.exists(run_folder):
+            shutil.rmtree(run_folder, ignore_errors=True)
         return jsonify({"error": str(e)}), 400
-    except Exception as e:
-        return jsonify({"error": f"Could not read Excel file: {e}"}), 400
-
-    employee_results = process_oig_only_run(df, run_folder)
-    return make_response(run_id, employee_results)
+    except Exception:
+        if os.path.exists(run_folder):
+            shutil.rmtree(run_folder, ignore_errors=True)
+        return jsonify({"error": "Processing failed"}), 500
+    finally:
+        if upload_path and os.path.exists(upload_path):
+            try:
+                os.remove(upload_path)
+            except Exception:
+                pass
 
 
 @app.route("/api/run-cna", methods=["POST"])
 def run_cna_only():
+    auth_error = require_api_key()
+    if auth_error:
+        return auth_error
+
     cleanup_old_runs(RUNS_FOLDER)
+    cleanup_old_uploads(UPLOAD_FOLDER)
 
     file = request.files.get("file")
     if not file or file.filename == "":
         return jsonify({"error": "No file selected"}), 400
 
-    run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+    if not allowed_file(file.filename):
+        return jsonify({"error": "Only Excel files (.xlsx or .xls) are allowed"}), 400
+
+    run_id = generate_run_id()
     run_folder = os.path.join(RUNS_FOLDER, run_id)
     os.makedirs(run_folder, exist_ok=True)
 
-    upload_path = prepare_upload(file, run_id)
+    upload_path = None
 
     try:
+        upload_path = prepare_upload(file, run_folder)
         df = read_input_dataframe(upload_path)
+        employee_results = process_cna_only_run(df, run_folder)
+        return make_response(run_id, employee_results)
     except ValueError as e:
+        if os.path.exists(run_folder):
+            shutil.rmtree(run_folder, ignore_errors=True)
         return jsonify({"error": str(e)}), 400
-    except Exception as e:
-        return jsonify({"error": f"Could not read Excel file: {e}"}), 400
-
-    employee_results = process_cna_only_run(df, run_folder)
-    return make_response(run_id, employee_results)
+    except Exception:
+        if os.path.exists(run_folder):
+            shutil.rmtree(run_folder, ignore_errors=True)
+        return jsonify({"error": "Processing failed"}), 500
+    finally:
+        if upload_path and os.path.exists(upload_path):
+            try:
+                os.remove(upload_path)
+            except Exception:
+                pass
 
 
 @app.route("/api/run-adverse", methods=["POST"])
 def run_adverse_only():
+    auth_error = require_api_key()
+    if auth_error:
+        return auth_error
+
     cleanup_old_runs(RUNS_FOLDER)
+    cleanup_old_uploads(UPLOAD_FOLDER)
 
     file = request.files.get("file")
     if not file or file.filename == "":
         return jsonify({"error": "No file selected"}), 400
 
-    run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+    if not allowed_file(file.filename):
+        return jsonify({"error": "Only Excel files (.xlsx or .xls) are allowed"}), 400
+
+    run_id = generate_run_id()
     run_folder = os.path.join(RUNS_FOLDER, run_id)
     os.makedirs(run_folder, exist_ok=True)
 
-    upload_path = prepare_upload(file, run_id)
+    upload_path = None
 
     try:
+        upload_path = prepare_upload(file, run_folder)
         df = read_input_dataframe(upload_path)
+        employee_results = process_adverse_only_run(df, run_folder)
+        return make_response(run_id, employee_results)
     except ValueError as e:
+        if os.path.exists(run_folder):
+            shutil.rmtree(run_folder, ignore_errors=True)
         return jsonify({"error": str(e)}), 400
-    except Exception as e:
-        return jsonify({"error": f"Could not read Excel file: {e}"}), 400
-
-    employee_results = process_adverse_only_run(df, run_folder)
-    return make_response(run_id, employee_results)
+    except Exception:
+        if os.path.exists(run_folder):
+            shutil.rmtree(run_folder, ignore_errors=True)
+        return jsonify({"error": "Processing failed"}), 500
+    finally:
+        if upload_path and os.path.exists(upload_path):
+            try:
+                os.remove(upload_path)
+            except Exception:
+                pass
 
 
 @app.route("/api/download/<run_id>/zip", methods=["GET"])
 def download_zip(run_id):
+    auth_error = require_api_key()
+    if auth_error:
+        return auth_error
+
     run_folder = os.path.join(RUNS_FOLDER, run_id)
     zip_path = None
 
@@ -717,6 +829,10 @@ def download_zip(run_id):
 
 @app.route("/api/download/<run_id>/results-excel", methods=["GET"])
 def download_results_excel(run_id):
+    auth_error = require_api_key()
+    if auth_error:
+        return auth_error
+
     return jsonify({"error": "Excel is included inside the ZIP file only"}), 410
 
 
