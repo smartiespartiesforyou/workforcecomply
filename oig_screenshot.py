@@ -30,9 +30,7 @@ def build_oig_filename(first_name, last_name, ssn):
     first_clean = clean_name(first_name)
     last_clean = clean_name(last_name)
     last4 = get_last4(ssn)
-
     date_part = datetime.now().strftime("%Y-%m-%d")
-
     return f"{first_clean}_{last_clean}_{last4}_{date_part}_OIG.pdf"
 
 
@@ -77,7 +75,7 @@ def close_oig_session():
             _browser.close()
         if _playwright:
             _playwright.stop()
-    except:
+    except Exception:
         pass
 
     _playwright = None
@@ -93,13 +91,13 @@ def _wait_for_results(page):
     for _ in range(30):
         try:
             if page.locator("text=Search Results").first.is_visible(timeout=200):
-                return True
+                return "search_results"
             if page.locator("text=No Results").first.is_visible(timeout=200):
-                return True
-        except:
+                return "no_results"
+        except Exception:
             pass
         page.wait_for_timeout(200)
-    return False
+    return "unknown"
 
 
 def capture_oig(first_name, last_name, ssn, save_folder="proofs"):
@@ -118,7 +116,29 @@ def capture_oig(first_name, last_name, ssn, save_folder="proofs"):
 
         page.click(SEARCH_BUTTON_SELECTOR)
 
-        _wait_for_results(page)
+        result_state = _wait_for_results(page)
+        page_text = page.locator("body").inner_text(timeout=5000)
+
+        oig_match_found = False
+        oig_status = "clear"
+
+        if result_state == "search_results":
+            oig_match_found = True
+            oig_status = "review_needed"
+        elif result_state == "no_results":
+            oig_match_found = False
+            oig_status = "clear"
+        else:
+            upper_text = page_text.upper()
+            if "SEARCH RESULTS" in upper_text:
+                oig_match_found = True
+                oig_status = "review_needed"
+            elif "NO RESULTS" in upper_text:
+                oig_match_found = False
+                oig_status = "clear"
+            else:
+                oig_match_found = False
+                oig_status = "error"
 
         page.pdf(
             path=pdf_path,
@@ -126,7 +146,16 @@ def capture_oig(first_name, last_name, ssn, save_folder="proofs"):
             print_background=True
         )
 
-        return {"pdf_path": pdf_path}
+        return {
+            "pdf_path": pdf_path,
+            "oig_match_found": oig_match_found,
+            "oig_status": oig_status
+        }
 
     except Exception as e:
-        return {"pdf_path": None, "error": str(e)}
+        return {
+            "pdf_path": None,
+            "oig_match_found": False,
+            "oig_status": "error",
+            "error": str(e)
+        }
