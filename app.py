@@ -287,6 +287,8 @@ def process_combined_run(df, run_folder):
             try:
                 oig_result = run_oig_safe(first, last, ssn, oig_folder)
                 oig_pdf = oig_result.get("pdf_path")
+                oig_status = safe_text(oig_result.get("oig_status", "")).lower()
+                oig_match_found = bool(oig_result.get("oig_match_found", False))
 
                 if oig_pdf:
                     oig_paths.append(oig_pdf)
@@ -296,6 +298,10 @@ def process_combined_run(df, run_folder):
                         employee["issues"].append("REVIEW NEEDED - OIG ERROR")
                     else:
                         employee["issues"].append("REVIEW NEEDED - OIG PROOF MISSING")
+
+                if oig_match_found or oig_status in ("match", "found", "review_needed", "name_match"):
+                    employee["issues"].append("REVIEW NEEDED - OIG NAME MATCH")
+
             except Exception:
                 employee["issues"].append("REVIEW NEEDED - OIG ERROR")
 
@@ -408,6 +414,8 @@ def process_oig_only_run(df, run_folder):
             try:
                 oig_result = run_oig_safe(first, last, ssn, oig_folder)
                 oig_pdf = oig_result.get("pdf_path")
+                oig_status = safe_text(oig_result.get("oig_status", "")).lower()
+                oig_match_found = bool(oig_result.get("oig_match_found", False))
 
                 if oig_pdf:
                     oig_paths.append(oig_pdf)
@@ -417,6 +425,10 @@ def process_oig_only_run(df, run_folder):
                         employee["issues"].append("REVIEW NEEDED - OIG ERROR")
                     else:
                         employee["issues"].append("REVIEW NEEDED - OIG PROOF MISSING")
+
+                if oig_match_found or oig_status in ("match", "found", "review_needed", "name_match"):
+                    employee["issues"].append("REVIEW NEEDED - OIG NAME MATCH")
+
             except Exception:
                 employee["issues"].append("REVIEW NEEDED - OIG ERROR")
 
