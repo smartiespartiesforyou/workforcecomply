@@ -88,16 +88,38 @@ atexit.register(close_oig_session)
 
 
 def _wait_for_results(page):
-    for _ in range(30):
+    for _ in range(40):
         try:
-            if page.locator("text=Search Results").first.is_visible(timeout=200):
-                return "search_results"
-            if page.locator("text=No Results").first.is_visible(timeout=200):
+            body_text = page.locator("body").inner_text(timeout=1000).upper()
+
+            if "NO RESULTS" in body_text:
                 return "no_results"
+
+            if "SEARCH RESULTS" in body_text:
+                return "search_results"
+
         except Exception:
             pass
-        page.wait_for_timeout(200)
+
+        page.wait_for_timeout(250)
+
     return "unknown"
+
+
+def _detect_oig_match(page):
+    try:
+        body_text = page.locator("body").inner_text(timeout=5000).upper()
+
+        if "NO RESULTS" in body_text:
+            return False, "clear"
+
+        if "SEARCH RESULTS" in body_text and "NO RESULTS" not in body_text:
+            return True, "review_needed"
+
+        return False, "error"
+
+    except Exception:
+        return False, "error"
 
 
 def capture_oig(first_name, last_name, ssn, save_folder="proofs"):
@@ -111,34 +133,17 @@ def capture_oig(first_name, last_name, ssn, save_folder="proofs"):
     try:
         page.goto(OIG_URL, wait_until="domcontentloaded")
 
+        page.fill(LAST_NAME_SELECTOR, "")
+        page.fill(FIRST_NAME_SELECTOR, "")
+
         page.fill(LAST_NAME_SELECTOR, last_name)
         page.fill(FIRST_NAME_SELECTOR, first_name)
 
         page.click(SEARCH_BUTTON_SELECTOR)
 
-        result_state = _wait_for_results(page)
-        page_text = page.locator("body").inner_text(timeout=5000)
+        _wait_for_results(page)
 
-        oig_match_found = False
-        oig_status = "clear"
-
-        if result_state == "search_results":
-            oig_match_found = True
-            oig_status = "review_needed"
-        elif result_state == "no_results":
-            oig_match_found = False
-            oig_status = "clear"
-        else:
-            upper_text = page_text.upper()
-            if "SEARCH RESULTS" in upper_text:
-                oig_match_found = True
-                oig_status = "review_needed"
-            elif "NO RESULTS" in upper_text:
-                oig_match_found = False
-                oig_status = "clear"
-            else:
-                oig_match_found = False
-                oig_status = "error"
+        oig_match_found, oig_status = _detect_oig_match(page)
 
         page.pdf(
             path=pdf_path,
