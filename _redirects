@@ -1,1 +1,8 @@
 https://workforcecomply.com/* https://www.workforcecomply.com/:splat 301!
+
+/app.html   /app.html   200
+/pricing.html   /pricing.html   200
+/how-it-works.html   /how-it-works.html   200
+/contact.html   /contact.html   200
+
+/*   /index.html   200
