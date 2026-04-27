@@ -16,16 +16,43 @@
 <link rel="canonical" href="https://www.workforcecomply.com/" />
 
 <title>CNA Registry Check, OIG Exclusion & Adverse Action Screening | WorkforceComply</title>
+<meta name="description" content="Run CNA registry checks, OIG exclusion searches, and healthcare compliance screenings in minutes. Built for nursing homes, HR teams, and healthcare providers nationwide.">
+
+<meta property="og:title" content="WorkforceComply – Healthcare Compliance Checks Made Simple">
+<meta property="og:description" content="Run CNA registry checks, OIG exclusion searches, and compliance screenings with audit-ready proof.">
+<meta property="og:url" content="https://www.workforcecomply.com/">
+<meta property="og:type" content="website">
 
 <script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
 
 <style>
-body { font-family: Arial, sans-serif; }
+body { font-family: 'Inter', sans-serif; }
 
 .hero-gradient {
   background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
 }
+
+.soft-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.04);
+  transition: all 0.2s ease;
+}
+
+.soft-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.08);
+}
 </style>
+
+<script>
+function goToWorkforceApp() {
+  window.location.assign("/app.html");
+}
+</script>
 
 </head>
 
@@ -35,70 +62,137 @@ body { font-family: Arial, sans-serif; }
 
     <div class="flex items-center gap-2">
         <div class="bg-blue-600 w-10 h-10 flex items-center justify-center rounded-lg font-bold">W</div>
-        <span class="text-xl font-semibold">WorkforceComply</span>
+        <span class="text-xl font-semibold tracking-tight">WorkforceComply</span>
     </div>
 
-    <div class="flex items-center gap-4">
+    <div class="hidden md:flex items-center gap-6 text-sm font-medium">
+        <a href="https://www.workforcecomply.com/how-it-works.html" class="hover:text-gray-300">How it Works</a>
+        <a href="https://www.workforcecomply.com/pricing.html" class="hover:text-gray-300">Pricing</a>
+        <a href="https://www.workforcecomply.com/contact.html" class="hover:text-gray-300">Contact</a>
 
         <button data-ms-modal="login"
             data-ms-content="!members"
-            class="bg-white text-blue-600 px-4 py-2 rounded-lg">
+            class="bg-white text-blue-600 px-5 py-2 rounded-lg font-semibold hover:bg-gray-100">
             Login
         </button>
 
-        <!-- ✅ FIXED BUTTON -->
-        <a href="/app.html"
-           onclick="window.location.href='/app.html'; return false;"
+        <button type="button"
+           onclick="goToWorkforceApp()"
            data-ms-content="members"
-           class="bg-green-600 px-4 py-2 rounded-lg">
+           class="bg-green-600 hover:bg-green-700 px-5 py-2 rounded-lg font-semibold">
            Go to App
-        </a>
-
+        </button>
     </div>
 
 </nav>
 
 <section class="hero-gradient text-white text-center py-28 px-6">
 
-    <h1 class="text-4xl font-bold mb-6">
-        CNA Registry Checks, OIG Exclusion Checks & Healthcare Compliance Software
-    </h1>
+    <div class="max-w-5xl mx-auto">
 
-    <p class="text-lg mb-4">
-        Run compliance checks in minutes with audit-ready proof.
-    </p>
+        <p class="text-sm uppercase tracking-[0.25em] text-blue-300 mb-4 font-semibold">
+            Healthcare HR Compliance
+        </p>
 
-    <!-- ✅ TRIAL MESSAGE -->
-    <p class="text-green-300 font-bold text-xl mb-6">
-        30-Day Free Trial — No Credit Card Required
-    </p>
+        <h1 class="text-4xl md:text-6xl font-bold leading-tight tracking-tight">
+            CNA Registry Checks Louisiana, OIG Exclusion Checks and Healthcare Compliance Software
+        </h1>
 
-    <div class="flex justify-center gap-4">
+        <p class="mt-6 text-lg text-gray-300 max-w-3xl mx-auto leading-relaxed">
+            WorkforceComply is a healthcare compliance software platform that helps HR teams run CNA registry checks in Louisiana, perform OIG exclusion checks, and complete adverse action screenings with audit-ready documentation. Designed for nursing homes and healthcare providers, the platform simplifies employee screening, compliance tracking, and reporting in one place.
+        </p>
 
-        <!-- ✅ TRIAL BUTTON -->
-        <a href="#"
-           data-ms-content="!members"
-           data-ms-modal="signup"
-           data-ms-plan:add="pln_workforcecomply-30-day-trial-hjh0ayo"
-           data-ms-redirect="/app.html"
-           class="bg-blue-600 px-6 py-3 rounded-lg">
-           Start Free Trial
-        </a>
+        <p class="mt-4 text-green-300 text-xl font-bold">
+            30-Day Free Trial — No Credit Card Required
+        </p>
 
-        <!-- ✅ FIXED GO TO APP -->
-        <a href="/app.html"
-           onclick="window.location.href='/app.html'; return false;"
-           data-ms-content="members"
-           class="bg-green-600 px-6 py-3 rounded-lg">
-           Go to App
-        </a>
+        <div class="mt-10 flex flex-col sm:flex-row justify-center gap-4">
+
+            <a href="#"
+               data-ms-content="!members"
+               data-ms-modal="signup"
+               data-ms-plan:add="pln_workforcecomply-30-day-trial-hjh0ayo"
+               data-ms-redirect="/app.html"
+               class="bg-blue-600 hover:bg-blue-700 px-8 py-4 rounded-xl text-lg font-semibold shadow-md">
+                Start Free 30-Day Trial
+            </a>
+
+            <button type="button"
+               onclick="goToWorkforceApp()"
+               data-ms-content="members"
+               class="bg-green-600 hover:bg-green-700 px-8 py-4 rounded-xl text-lg font-semibold shadow-md">
+                Go to App
+            </button>
+
+            <a href="https://www.workforcecomply.com/how-it-works.html"
+               class="border border-white/30 hover:bg-white/10 px-8 py-4 rounded-xl text-lg font-semibold">
+                See How It Works
+            </a>
+
+        </div>
+
+        <div class="mt-12 flex flex-wrap justify-center gap-8 text-sm text-gray-300">
+            <span>✓ Audit-Ready Documentation</span>
+            <span>✓ Flagged Records First</span>
+            <span>✓ Built for Healthcare HR</span>
+        </div>
 
     </div>
 
 </section>
 
-<footer class="bg-[#0f172a] py-10 text-center text-white">
-    <p>© 2026 WorkforceComply</p>
+<section class="py-20 px-6 max-w-6xl mx-auto">
+
+    <div class="grid md:grid-cols-3 gap-8">
+
+        <div class="soft-card">
+            <h3 class="text-xl font-semibold mb-3">Run Checks Individually</h3>
+            <p class="text-slate-600 leading-relaxed">
+                Keep each compliance run separate so results stay clean, organized, and easier to review.
+            </p>
+        </div>
+
+        <div class="soft-card">
+            <h3 class="text-xl font-semibold mb-3">Download Proof Packages</h3>
+            <p class="text-slate-600 leading-relaxed">
+                Each run generates a ZIP package with proof files and reporting ready for audits and personnel records.
+            </p>
+        </div>
+
+        <div class="soft-card">
+            <h3 class="text-xl font-semibold mb-3">Built to Scale</h3>
+            <p class="text-slate-600 leading-relaxed">
+                WorkforceComply is designed to expand beyond one state with additional registries and compliance checks added over time.
+            </p>
+        </div>
+
+    </div>
+
+</section>
+
+<section class="py-16 px-6 max-w-5xl mx-auto">
+    <h2 class="text-3xl font-bold mb-4 text-center">Healthcare Compliance Checks Made Simple</h2>
+    <p class="text-slate-600 text-center leading-relaxed text-lg">
+        Managing employee compliance in healthcare can be time-consuming and risky. WorkforceComply allows HR teams to quickly verify CNA licenses, check OIG exclusion lists, and identify adverse actions in a cleaner workflow.
+    </p>
+</section>
+
+<section class="py-24 text-center px-6">
+
+    <h2 class="text-3xl font-bold mb-4">Start running compliance checks today</h2>
+
+    <p class="text-slate-600 mb-3">
+        Upload your file, run your checks, and download your proof package without piecing everything together manually.
+    </p>
+
+    <p class="text-blue-700 font-bold text-lg">
+        30-Day Free Trial — No Credit Card Required
+    </p>
+
+</section>
+
+<footer class="bg-[#0f172a] py-12 text-center text-white">
+    <p class="text-xs text-slate-400">© 2026 WorkforceComply</p>
 </footer>
 
 </body>
