@@ -38,25 +38,47 @@
     <section class="max-w-5xl mx-auto py-20 px-6">
         <div class="space-y-16">
 
+            <!-- STEP 01 -->
             <div class="flex flex-col md:flex-row gap-12 items-center">
                 <div class="flex-1">
                     <span class="text-blue-600 font-bold uppercase tracking-widest text-sm">Step 01</span>
                     <h2 class="text-2xl font-bold mt-2 mb-4">Upload Your Workforce File</h2>
+
                     <p class="text-slate-600 leading-relaxed">
-                        Start with a simple employee spreadsheet. WorkforceComply is built to help HR teams process roster-based compliance checks quickly without manually searching every person one at a time.
+                        Upload an Excel (.xlsx) file with your employee list.<br><br>
+
+                        <strong>Your header row MUST match exactly:</strong><br>
+                        First Name &nbsp;&nbsp;&nbsp; Last Name &nbsp;&nbsp;&nbsp; SSN<br><br>
+
+                        These headers must:
+                        <br>• Be spelled exactly the same
+                        <br>• Be in the same order
+                        <br>• Not contain extra spaces or variations<br><br>
+
+                        <strong>Correct format:</strong><br>
+                        First Name | Last Name | SSN<br><br>
+
+                        <strong>Incorrect examples:</strong><br>
+                        Firstname | Lastname | SSN<br>
+                        First Name | Last Name | Social Security<br>
+                        First Name | Last Name | SSN #<br><br>
+
+                        If the headers do not match exactly, your file will fail.
                     </p>
                 </div>
+
                 <div class="flex-1 bg-blue-50 p-8 rounded-2xl border border-blue-100 text-center font-mono text-blue-800 italic">
-                    [Employee File Uploaded]
+                    First Name | Last Name | SSN
                 </div>
             </div>
 
+            <!-- STEP 02 -->
             <div class="flex flex-col md:flex-row-reverse gap-12 items-center">
                 <div class="flex-1">
                     <span class="text-blue-600 font-bold uppercase tracking-widest text-sm">Step 02</span>
                     <h2 class="text-2xl font-bold mt-2 mb-4">Run the Checks You Need</h2>
                     <p class="text-slate-600 leading-relaxed">
-                        Run individual compliance checks based on your workflow, state requirements, and internal policy. Each check runs separately so results stay organized, easier to review, and easier to troubleshoot.
+                        Run your compliance checks based on your workflow and state requirements. Each check runs separately so results stay organized and easy to review.
                     </p>
                 </div>
                 <div class="flex-1 bg-slate-100 p-8 rounded-2xl border border-slate-200 text-center font-mono text-slate-800 italic">
@@ -64,12 +86,13 @@
                 </div>
             </div>
 
+            <!-- STEP 03 -->
             <div class="flex flex-col md:flex-row gap-12 items-center">
                 <div class="flex-1">
                     <span class="text-blue-600 font-bold uppercase tracking-widest text-sm">Step 03</span>
                     <h2 class="text-2xl font-bold mt-2 mb-4">Flag Issues and Keep Proof</h2>
                     <p class="text-slate-600 leading-relaxed">
-                        WorkforceComply generates proof files and downloadable reports for each run. HR teams can quickly see who needs attention while keeping supporting documentation ready for audits, surveys, and personnel files.
+                        WorkforceComply generates proof files and reports for each run. You will see flagged employees first while still keeping full documentation for audits and personnel files.
                     </p>
                 </div>
                 <div class="flex-1 bg-green-50 p-8 rounded-2xl border border-green-100 text-center font-mono text-green-800 italic">
@@ -98,7 +121,7 @@
                 <div class="bg-slate-50 border border-slate-200 rounded-2xl p-6">
                     <h3 class="font-bold text-lg mb-2">Ready to Grow</h3>
                     <p class="text-slate-600 text-sm leading-relaxed">
-                        Designed for expanding compliance workflows without locking the platform into one state or one registry structure.
+                        Designed for expanding compliance workflows without locking into one structure.
                     </p>
                 </div>
             </div>
