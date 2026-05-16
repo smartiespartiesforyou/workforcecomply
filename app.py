@@ -523,6 +523,32 @@ def process_cna_only_run(df, run_folder):
     return employee_results
 
 
+
+def split_adverse_dataframe(df):
+    df = df.copy()
+
+    df["_LAST_INITIAL"] = (
+        df["Last Name"]
+        .fillna("")
+        .astype(str)
+        .str.strip()
+        .str.upper()
+        .str[:1]
+    )
+
+    batch_ag = df[df["_LAST_INITIAL"].between("A", "G", inclusive="both")]
+    batch_hm = df[df["_LAST_INITIAL"].between("H", "M", inclusive="both")]
+    batch_nz = df[df["_LAST_INITIAL"].between("N", "Z", inclusive="both")]
+
+    batches = [
+        ("A-G", batch_ag.drop(columns=["_LAST_INITIAL"], errors="ignore")),
+        ("H-M", batch_hm.drop(columns=["_LAST_INITIAL"], errors="ignore")),
+        ("N-Z", batch_nz.drop(columns=["_LAST_INITIAL"], errors="ignore"))
+    ]
+
+    return [(name, batch) for name, batch in batches if not batch.empty]
+
+
 def process_adverse_only_run(df, run_folder):
     adverse_folder = os.path.join(run_folder, "Adverse_Actions_Report")
     os.makedirs(adverse_folder, exist_ok=True)
@@ -530,58 +556,65 @@ def process_adverse_only_run(df, run_folder):
     employee_results = []
     adverse_paths = []
 
-    def process_one_row(row):
-        first = safe_text(row["First Name"])
-        last = safe_text(row["Last Name"])
-        ssn_raw = row["SSN"]
-        ssn = clean_ssn(ssn_raw)
+    batches = split_adverse_dataframe(df)
 
-        employee = {
-            "First Name": first,
-            "Last Name": last,
-            "SSN": ssn,
-            "issues": [],
-            "flagged": False
-        }
+    for batch_name, batch_df in batches:
+        print(f"Starting DSW batch: {batch_name}")
 
-        if len(ssn) != 9:
-            employee["issues"].append("ERROR - INVALID SSN FOR ADVERSE")
-        else:
-            try:
-                adverse_result = run_adverse_safe(first, last, ssn, adverse_folder)
-                adverse_pdf = adverse_result.get("pdf_path")
+        def process_one_row(row):
+            first = safe_text(row["First Name"])
+            last = safe_text(row["Last Name"])
+            ssn_raw = row["SSN"]
+            ssn = clean_ssn(ssn_raw)
 
-                if adverse_pdf:
-                    adverse_paths.append(adverse_pdf)
+            employee = {
+                "First Name": first,
+                "Last Name": last,
+                "SSN": ssn,
+                "issues": [],
+                "flagged": False
+            }
 
-                adverse_status = safe_text(
-                    adverse_result.get("adverse_result", adverse_result.get("status", ""))
-                ).lower()
+            if len(ssn) != 9:
+                employee["issues"].append("ERROR - INVALID SSN FOR ADVERSE")
+            else:
+                try:
+                    adverse_result = run_adverse_safe(first, last, ssn, adverse_folder)
+                    adverse_pdf = adverse_result.get("pdf_path")
 
-                if adverse_status in ("match", "found", "review_needed"):
-                    detail = safe_text(adverse_result.get("detail")) or "ADVERSE ACTION FOUND"
-                    employee["issues"].append(f"REVIEW NEEDED - ADVERSE: {detail}")
-                elif adverse_status == "error":
+                    if adverse_pdf:
+                        adverse_paths.append(adverse_pdf)
+
+                    adverse_status = safe_text(
+                        adverse_result.get("adverse_result", adverse_result.get("status", ""))
+                    ).lower()
+
+                    if adverse_status in ("match", "found", "review_needed"):
+                        detail = safe_text(adverse_result.get("detail")) or "ADVERSE ACTION FOUND"
+                        employee["issues"].append(f"REVIEW NEEDED - ADVERSE: {detail}")
+                    elif adverse_status == "error":
+                        employee["issues"].append("REVIEW NEEDED - ADVERSE ERROR")
+                    elif not adverse_pdf:
+                        employee["issues"].append("REVIEW NEEDED - ADVERSE PROOF MISSING")
+
+                except Exception:
                     employee["issues"].append("REVIEW NEEDED - ADVERSE ERROR")
-                elif not adverse_pdf:
-                    employee["issues"].append("REVIEW NEEDED - ADVERSE PROOF MISSING")
 
-            except Exception:
-                employee["issues"].append("REVIEW NEEDED - ADVERSE ERROR")
+            if employee["issues"]:
+                employee["flagged"] = True
 
-        if employee["issues"]:
-            employee["flagged"] = True
+            return employee
 
-        return employee
+        try:
+            rows = [row for _, row in batch_df.iterrows()]
 
-    try:
-        rows = [row for _, row in df.iterrows()]
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                batch_results = list(executor.map(process_one_row, rows))
 
-        with ThreadPoolExecutor(max_workers=2) as executor:
-            employee_results = list(executor.map(process_one_row, rows))
+            employee_results.extend(batch_results)
 
-    finally:
-        close_adverse_session()
+        finally:
+            close_adverse_session()
 
     merge_pdfs(adverse_paths, os.path.join(adverse_folder, "Adverse_Actions_Merged.pdf"))
 
