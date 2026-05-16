@@ -65,27 +65,27 @@ def generate_run_id():
     return secrets.token_urlsafe(24)
 
 
-def cleanup_old_runs(folder, days=2):
+def cleanup_old_runs(folder, hours=4):
     now = datetime.now()
     for name in os.listdir(folder):
         path = os.path.join(folder, name)
         if os.path.isdir(path):
             try:
                 created = datetime.fromtimestamp(os.path.getctime(path))
-                if now - created > timedelta(days=days):
+                if now - created > timedelta(hours=hours):
                     shutil.rmtree(path)
             except Exception:
                 pass
 
 
-def cleanup_old_uploads(folder, days=2):
+def cleanup_old_uploads(folder, hours=4):
     now = datetime.now()
     for name in os.listdir(folder):
         path = os.path.join(folder, name)
         if os.path.isfile(path):
             try:
                 created = datetime.fromtimestamp(os.path.getctime(path))
-                if now - created > timedelta(days=days):
+                if now - created > timedelta(hours=hours):
                     os.remove(path)
             except Exception:
                 pass
@@ -1247,15 +1247,9 @@ def download_batch_zip(parent_run_id, batch_id):
         download_name=f"DSW_Report_{batch_id}.zip"
     )
 
-    def cleanup():
-        try:
-            shutil.rmtree(batch_folder)
-            if os.path.exists(parent_folder) and not os.listdir(parent_folder):
-                shutil.rmtree(parent_folder)
-        except Exception:
-            pass
-
-    response.call_on_close(cleanup)
+    # Do not delete batch folders immediately after a single batch download.
+    # Other batches in the same run may still need their batch_input.xlsx files.
+    # The scheduled cleanup_old_runs() function removes the full run after the short retention window.
     return response
 
 
