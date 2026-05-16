@@ -7,9 +7,14 @@ import re
 import zipfile
 import shutil
 import secrets
+import urllib.request
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor
 from PyPDF2 import PdfMerger
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib import colors
 
 from oig_screenshot import capture_oig, close_oig_session
 from cna_screenshot import capture_cna, close_cna_session
@@ -524,6 +529,107 @@ def process_cna_only_run(df, run_folder):
 
 
 
+
+DSW_CSV_URL = "https://adverseactions.ldh.la.gov/SelSearch/SelSearch/GetCsv"
+
+
+def normalize_match_text(value):
+    text = safe_text(value).upper()
+    text = re.sub(r"[^A-Z0-9]+", " ", text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def download_dsw_csv(run_folder):
+    csv_path = os.path.join(run_folder, "DSW_Source_Adverse_Actions_List.csv")
+
+    try:
+        urllib.request.urlretrieve(DSW_CSV_URL, csv_path)
+        df = pd.read_csv(csv_path, dtype=str, keep_default_na=False)
+        return df, csv_path, None
+    except Exception as e:
+        return None, None, str(e)
+
+
+def dsw_csv_possible_match(first, last, ssn, dsw_df):
+    first_norm = normalize_match_text(first)
+    last_norm = normalize_match_text(last)
+    ssn_clean = clean_ssn(ssn)
+
+    if dsw_df is None or dsw_df.empty:
+        return False, ""
+
+    for _, csv_row in dsw_df.iterrows():
+        row_parts = [safe_text(v) for v in csv_row.values]
+        row_text_raw = " ".join(row_parts)
+        row_text_norm = normalize_match_text(row_text_raw)
+        row_ssn = clean_ssn(row_text_raw)
+
+        if ssn_clean and len(ssn_clean) == 9 and ssn_clean in row_ssn:
+            return True, row_text_raw[:500]
+
+        if first_norm and last_norm:
+            if first_norm in row_text_norm and last_norm in row_text_norm:
+                return True, row_text_raw[:500]
+
+    return False, ""
+
+
+def create_dsw_csv_clear_report(clear_rows, output_path, csv_path):
+    doc = SimpleDocTemplate(
+        output_path,
+        pagesize=letter,
+        rightMargin=36,
+        leftMargin=36,
+        topMargin=36,
+        bottomMargin=36
+    )
+
+    styles = getSampleStyleSheet()
+    story = []
+
+    story.append(Paragraph("WorkforceComply DSW / Adverse Actions CSV Clear Report", styles["Title"]))
+    story.append(Spacer(1, 12))
+
+    story.append(Paragraph(
+        "This report documents employees checked against the Louisiana State Adverse Actions / Exclusions CSV downloaded from the LDH adverse actions export page for this run.",
+        styles["BodyText"]
+    ))
+    story.append(Spacer(1, 8))
+
+    story.append(Paragraph(f"Run date/time: {datetime.now().strftime('%Y-%m-%d %I:%M %p')}", styles["BodyText"]))
+    story.append(Paragraph(f"Source file: {os.path.basename(csv_path) if csv_path else 'LDH CSV download'}", styles["BodyText"]))
+    story.append(Spacer(1, 12))
+
+    if not clear_rows:
+        story.append(Paragraph("No CSV-cleared employees were recorded in this run.", styles["BodyText"]))
+    else:
+        data = [["First Name", "Last Name", "SSN Last 4", "DSW CSV Result"]]
+
+        for row in clear_rows:
+            ssn = clean_ssn(row.get("SSN", ""))
+            last4 = ssn[-4:] if len(ssn) >= 4 else ""
+            data.append([
+                safe_text(row.get("First Name", "")),
+                safe_text(row.get("Last Name", "")),
+                last4,
+                "No match found in downloaded LDH CSV"
+            ])
+
+        table = Table(data, repeatRows=1, colWidths=[110, 110, 80, 210])
+        table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+            ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 8),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.whitesmoke]),
+        ]))
+        story.append(table)
+
+    doc.build(story)
+    return output_path
+
+
 def split_adverse_dataframe(df):
     df = df.copy()
 
@@ -555,17 +661,66 @@ def process_adverse_only_run(df, run_folder):
 
     employee_results = []
     adverse_paths = []
+    clear_rows = []
 
-    batches = split_adverse_dataframe(df)
+    dsw_df, csv_path, csv_error = download_dsw_csv(run_folder)
+
+    if csv_error or dsw_df is None:
+        print(f"DSW CSV download failed. Falling back to live browser checks. Error: {csv_error}")
+        batches = split_adverse_dataframe(df)
+    else:
+        print(f"DSW CSV downloaded successfully with {len(dsw_df)} rows.")
+        possible_match_rows = []
+
+        for _, row in df.iterrows():
+            first = safe_text(row["First Name"])
+            last = safe_text(row["Last Name"])
+            ssn_raw = row["SSN"]
+            ssn = clean_ssn(ssn_raw)
+
+            employee = {
+                "First Name": first,
+                "Last Name": last,
+                "SSN": ssn,
+                "issues": [],
+                "flagged": False
+            }
+
+            if len(ssn) != 9:
+                employee["issues"].append("ERROR - INVALID SSN FOR ADVERSE")
+                employee["flagged"] = True
+                employee_results.append(employee)
+                continue
+
+            possible_match, detail = dsw_csv_possible_match(first, last, ssn, dsw_df)
+
+            if possible_match:
+                row_copy = row.copy()
+                row_copy["_CSV_MATCH_DETAIL"] = detail
+                possible_match_rows.append(row_copy)
+            else:
+                employee_results.append(employee)
+                clear_rows.append({
+                    "First Name": first,
+                    "Last Name": last,
+                    "SSN": ssn
+                })
+
+        if possible_match_rows:
+            possible_df = pd.DataFrame(possible_match_rows)
+            batches = split_adverse_dataframe(possible_df)
+        else:
+            batches = []
 
     for batch_name, batch_df in batches:
-        print(f"Starting DSW batch: {batch_name}")
+        print(f"Starting DSW live verification batch: {batch_name}")
 
         def process_one_row(row):
             first = safe_text(row["First Name"])
             last = safe_text(row["Last Name"])
             ssn_raw = row["SSN"]
             ssn = clean_ssn(ssn_raw)
+            csv_detail = safe_text(row.get("_CSV_MATCH_DETAIL", ""))
 
             employee = {
                 "First Name": first,
@@ -590,12 +745,14 @@ def process_adverse_only_run(df, run_folder):
                     ).lower()
 
                     if adverse_status in ("match", "found", "review_needed"):
-                        detail = safe_text(adverse_result.get("detail")) or "ADVERSE ACTION FOUND"
+                        detail = safe_text(adverse_result.get("detail")) or csv_detail or "ADVERSE ACTION FOUND"
                         employee["issues"].append(f"REVIEW NEEDED - ADVERSE: {detail}")
                     elif adverse_status == "error":
                         employee["issues"].append("REVIEW NEEDED - ADVERSE ERROR")
                     elif not adverse_pdf:
                         employee["issues"].append("REVIEW NEEDED - ADVERSE PROOF MISSING")
+                    elif csv_detail:
+                        employee["issues"].append(f"REVIEW NEEDED - CSV POSSIBLE MATCH VERIFIED CLEAR ON LIVE SITE: {csv_detail}")
 
                 except Exception:
                     employee["issues"].append("REVIEW NEEDED - ADVERSE ERROR")
@@ -615,6 +772,15 @@ def process_adverse_only_run(df, run_folder):
 
         finally:
             close_adverse_session()
+
+    if clear_rows:
+        clear_report_path = os.path.join(adverse_folder, "DSW_CSV_Clear_Report.pdf")
+        try:
+            clear_pdf = create_dsw_csv_clear_report(clear_rows, clear_report_path, csv_path)
+            if clear_pdf:
+                adverse_paths.append(clear_pdf)
+        except Exception as e:
+            print(f"Failed to create DSW CSV clear report: {e}")
 
     merge_pdfs(adverse_paths, os.path.join(adverse_folder, "Adverse_Actions_Merged.pdf"))
 
