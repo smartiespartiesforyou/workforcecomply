@@ -866,6 +866,67 @@ def make_response(run_id, employee_results, single_pdf=False):
     })
 
 
+
+
+def get_dsw_batch_ranges():
+    return [
+        {"id": "A-D", "label": "A-D", "start": "A", "end": "D"},
+        {"id": "E-H", "label": "E-H", "start": "E", "end": "H"},
+        {"id": "I-P", "label": "I-P", "start": "I", "end": "P"},
+        {"id": "Q-Z", "label": "Q-Z", "start": "Q", "end": "Z"},
+    ]
+
+
+def split_dataframe_for_dsw_batches(df):
+    df = df.copy()
+    df["_LAST_INITIAL"] = (
+        df["Last Name"]
+        .fillna("")
+        .astype(str)
+        .str.strip()
+        .str.upper()
+        .str[:1]
+    )
+
+    batches = []
+    for batch in get_dsw_batch_ranges():
+        batch_df = df[
+            df["_LAST_INITIAL"].between(
+                batch["start"],
+                batch["end"],
+                inclusive="both"
+            )
+        ].drop(columns=["_LAST_INITIAL"], errors="ignore")
+
+        if not batch_df.empty:
+            batches.append({
+                "id": batch["id"],
+                "label": batch["label"],
+                "count": int(len(batch_df)),
+                "df": batch_df
+            })
+
+    return batches
+
+
+def make_batch_response(parent_run_id, batch_id, employee_results):
+    total = len(employee_results)
+    flagged = sum(1 for e in employee_results if e["flagged"])
+    clear = total - flagged
+
+    return jsonify({
+        "batch": {
+            "id": batch_id,
+            "total_employees": total,
+            "clear_count": clear,
+            "attention_needed": flagged
+        },
+        "downloads": {
+            "zip_url": f"{BACKEND_BASE_URL}/api/download/{parent_run_id}/{batch_id}/zip"
+        }
+    })
+
+
 @app.errorhandler(413)
 def too_large(_error):
     return jsonify({"error": f"File too large. Maximum size is {MAX_UPLOAD_MB} MB."}), 413
@@ -1045,6 +1106,150 @@ def run_cna_only():
                 os.remove(upload_path)
             except Exception:
                 pass
+
+
+
+
+@app.route("/api/run-adverse-batched-init", methods=["POST"])
+def run_adverse_batched_init():
+    auth_error = require_api_key()
+    if auth_error:
+        return auth_error
+
+    cleanup_old_runs(RUNS_FOLDER)
+    cleanup_old_uploads(UPLOAD_FOLDER)
+
+    file = request.files.get("file")
+    if not file or file.filename == "":
+        return jsonify({"error": "No file selected"}), 400
+
+    if not allowed_file(file.filename):
+        return jsonify({"error": "Only Excel files (.xlsx or .xls) are allowed"}), 400
+
+    parent_run_id = generate_run_id()
+    parent_folder = os.path.join(RUNS_FOLDER, parent_run_id)
+    os.makedirs(parent_folder, exist_ok=True)
+
+    upload_path = None
+
+    try:
+        upload_path = prepare_upload(file, parent_folder)
+        df = read_input_dataframe(upload_path)
+
+        batches = split_dataframe_for_dsw_batches(df)
+
+        if not batches:
+            shutil.rmtree(parent_folder, ignore_errors=True)
+            return jsonify({"error": "No employees found for DSW batch processing"}), 400
+
+        batch_summaries = []
+
+        for batch in batches:
+            batch_id = batch["id"]
+            batch_folder = os.path.join(parent_folder, batch_id)
+            os.makedirs(batch_folder, exist_ok=True)
+
+            batch_input_path = os.path.join(batch_folder, "batch_input.xlsx")
+            batch["df"].to_excel(batch_input_path, index=False)
+
+            batch_summaries.append({
+                "id": batch_id,
+                "label": batch["label"],
+                "count": batch["count"],
+                "status": "waiting"
+            })
+
+        return jsonify({
+            "run_id": parent_run_id,
+            "batches": batch_summaries,
+            "summary": {
+                "total_employees": int(sum(b["count"] for b in batch_summaries)),
+                "batch_count": len(batch_summaries)
+            }
+        })
+
+    except ValueError as e:
+        if os.path.exists(parent_folder):
+            shutil.rmtree(parent_folder, ignore_errors=True)
+        return jsonify({"error": str(e)}), 400
+
+    except Exception:
+        if os.path.exists(parent_folder):
+            shutil.rmtree(parent_folder, ignore_errors=True)
+        return jsonify({"error": "DSW batch setup failed"}), 500
+
+    finally:
+        if upload_path and os.path.exists(upload_path):
+            try:
+                os.remove(upload_path)
+            except Exception:
+                pass
+
+
+@app.route("/api/run-adverse-batch/<parent_run_id>/<batch_id>", methods=["POST"])
+def run_adverse_batch(parent_run_id, batch_id):
+    auth_error = require_api_key()
+    if auth_error:
+        return auth_error
+
+    allowed_batch_ids = {b["id"] for b in get_dsw_batch_ranges()}
+    if batch_id not in allowed_batch_ids:
+        return jsonify({"error": "Invalid batch"}), 400
+
+    parent_folder = os.path.join(RUNS_FOLDER, parent_run_id)
+    batch_folder = os.path.join(parent_folder, batch_id)
+    batch_input_path = os.path.join(batch_folder, "batch_input.xlsx")
+
+    if not os.path.exists(batch_input_path):
+        return jsonify({"error": "Batch input file not found"}), 404
+
+    try:
+        df = pd.read_excel(batch_input_path)
+        employee_results = process_adverse_only_run(df, batch_folder)
+        return make_batch_response(parent_run_id, batch_id, employee_results)
+
+    except Exception:
+        return jsonify({"error": f"DSW batch {batch_id} failed"}), 500
+
+
+@app.route("/api/download/<parent_run_id>/<batch_id>/zip", methods=["GET"])
+def download_batch_zip(parent_run_id, batch_id):
+    auth_error = require_api_key()
+    if auth_error:
+        return auth_error
+
+    parent_folder = os.path.join(RUNS_FOLDER, parent_run_id)
+    batch_folder = os.path.join(parent_folder, batch_id)
+    zip_path = None
+
+    if not os.path.exists(batch_folder):
+        return jsonify({"error": "Batch folder not found"}), 404
+
+    for f in os.listdir(batch_folder):
+        if f.endswith(".zip"):
+            zip_path = os.path.join(batch_folder, f)
+            break
+
+    if not zip_path or not os.path.exists(zip_path):
+        return jsonify({"error": "Batch ZIP file not found"}), 404
+
+    response = send_file(
+        zip_path,
+        as_attachment=True,
+        download_name=f"DSW_Report_{batch_id}.zip"
+    )
+
+    def cleanup():
+        try:
+            shutil.rmtree(batch_folder)
+            if os.path.exists(parent_folder) and not os.listdir(parent_folder):
+                shutil.rmtree(parent_folder)
+        except Exception:
+            pass
+
+    response.call_on_close(cleanup)
+    return response
+
 
 
 @app.route("/api/run-adverse", methods=["POST"])
