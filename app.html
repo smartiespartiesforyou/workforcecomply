@@ -349,6 +349,24 @@ body { font-family: 'Inter', sans-serif; }
                     </p>
                 </div>
                 <div id="batchResultsList" class="space-y-3"></div>
+
+                <div id="allBatchesDownloadBox" class="hidden mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                        <div>
+                            <p class="font-semibold text-slate-900">All DSW batches complete</p>
+                            <p class="text-sm text-slate-600">
+                                Download one ZIP containing all completed DSW batch ZIP files.
+                            </p>
+                        </div>
+                        <button
+                            id="allBatchesDownloadBtn"
+                            type="button"
+                            class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-3 rounded-xl font-semibold transition"
+                        >
+                            Download All DSW Results
+                        </button>
+                    </div>
+                </div>
             </div>
 
         </div>
@@ -403,6 +421,8 @@ const summary = document.getElementById("summary");
 const downloadBox = document.getElementById("downloadBox");
 const batchResultsBox = document.getElementById("batchResultsBox");
 const batchResultsList = document.getElementById("batchResultsList");
+const allBatchesDownloadBox = document.getElementById("allBatchesDownloadBox");
+const allBatchesDownloadBtn = document.getElementById("allBatchesDownloadBtn");
 
 const totalEl = document.getElementById("total");
 const clearEl = document.getElementById("clear");
@@ -501,6 +521,8 @@ function resetView() {
     downloadBox.classList.add("hidden");
     if (batchResultsBox) batchResultsBox.classList.add("hidden");
     if (batchResultsList) batchResultsList.innerHTML = "";
+    if (allBatchesDownloadBox) allBatchesDownloadBox.classList.add("hidden");
+    if (allBatchesDownloadBtn) allBatchesDownloadBtn.onclick = null;
     statusEl.innerText = "";
     zipLink.innerText = "Download ZIP";
     latestZipUrl = "";
@@ -812,6 +834,26 @@ async function runDswBatched() {
         flaggedEl.innerText = totalFlagged;
         runtimeEl.innerText = seconds + " sec";
         issuesLabel.innerText = "DSW Issues";
+
+        if (allBatchesDownloadBox && allBatchesDownloadBtn) {
+            const allZipUrl = BACKEND_BASE_URL + `/api/download/${runId}/all-dsw-zips`;
+            allBatchesDownloadBox.classList.remove("hidden");
+
+            allBatchesDownloadBtn.onclick = async function () {
+                try {
+                    statusCard.classList.remove("hidden");
+                    statusEl.innerText = "Downloading all DSW batch reports...";
+                    await downloadFile(
+                        allZipUrl,
+                        "Download All DSW Results",
+                        "All_DSW_Batch_Reports.zip"
+                    );
+                    statusEl.innerText = "Download complete";
+                } catch (error) {
+                    statusEl.innerText = "Error: " + error.message;
+                }
+            };
+        }
 
     } catch (error) {
         stopProgressMessages();
