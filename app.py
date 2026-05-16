@@ -599,6 +599,123 @@ def process_adverse_only_run(df, run_folder):
     return employee_results
 
 
+def process_single_person_run(first, last, ssn, run_folder):
+    oig_folder = os.path.join(run_folder, "OIG_Report")
+    cna_folder = os.path.join(run_folder, "CNA_Report")
+    adverse_folder = os.path.join(run_folder, "Adverse_Actions_Report")
+
+    os.makedirs(oig_folder, exist_ok=True)
+    os.makedirs(cna_folder, exist_ok=True)
+    os.makedirs(adverse_folder, exist_ok=True)
+
+    employee = {
+        "First Name": first,
+        "Last Name": last,
+        "SSN": ssn,
+        "issues": [],
+        "flagged": False
+    }
+
+    oig_paths = []
+    cna_paths = []
+    adverse_paths = []
+
+    try:
+        try:
+            oig_result = run_oig_safe(first, last, ssn, oig_folder)
+            oig_pdf = oig_result.get("pdf_path")
+            oig_status = safe_text(oig_result.get("oig_status", "")).lower()
+            oig_match_found = bool(oig_result.get("oig_match_found", False))
+
+            if oig_pdf:
+                oig_paths.append(oig_pdf)
+            else:
+                error = oig_result.get("error")
+                if error:
+                    employee["issues"].append("REVIEW NEEDED - OIG ERROR")
+                else:
+                    employee["issues"].append("REVIEW NEEDED - OIG PROOF MISSING")
+
+            if oig_match_found or oig_status in ("match", "found", "review_needed", "name_match"):
+                employee["issues"].append("REVIEW NEEDED - OIG NAME MATCH")
+
+        except Exception:
+            employee["issues"].append("REVIEW NEEDED - OIG ERROR")
+
+        if len(ssn) != 9:
+            employee["issues"].append("ERROR - INVALID SSN FOR CNA")
+            employee["issues"].append("ERROR - INVALID SSN FOR ADVERSE")
+        else:
+            try:
+                cna_result = run_cna_safe(first, last, ssn, cna_folder)
+                cna_pdf = cna_result.get("pdf_path")
+                cna_status = cna_result.get("cna_result", "")
+
+                if cna_pdf:
+                    cna_paths.append(cna_pdf)
+
+                if cna_status == "not_active":
+                    employee["issues"].append("CNA NOT ACTIVE")
+                elif cna_status == "review_needed":
+                    employee["issues"].append("REVIEW NEEDED - CNA REVIEW")
+                elif cna_status == "error":
+                    employee["issues"].append("REVIEW NEEDED - CNA ERROR")
+                elif not cna_pdf:
+                    employee["issues"].append("REVIEW NEEDED - CNA PROOF MISSING")
+
+            except Exception:
+                employee["issues"].append("REVIEW NEEDED - CNA ERROR")
+
+            try:
+                adverse_result = run_adverse_safe(first, last, ssn, adverse_folder)
+                adverse_pdf = adverse_result.get("pdf_path")
+
+                if adverse_pdf:
+                    adverse_paths.append(adverse_pdf)
+
+                adverse_status = safe_text(
+                    adverse_result.get("adverse_result", adverse_result.get("status", ""))
+                ).lower()
+
+                if adverse_status in ("match", "found", "review_needed"):
+                    detail = safe_text(adverse_result.get("detail")) or "ADVERSE ACTION FOUND"
+                    employee["issues"].append(f"REVIEW NEEDED - ADVERSE: {detail}")
+                elif adverse_status == "error":
+                    employee["issues"].append("REVIEW NEEDED - ADVERSE ERROR")
+                elif not adverse_pdf:
+                    employee["issues"].append("REVIEW NEEDED - ADVERSE PROOF MISSING")
+
+            except Exception:
+                employee["issues"].append("REVIEW NEEDED - ADVERSE ERROR")
+
+        if employee["issues"]:
+            employee["flagged"] = True
+
+    finally:
+        close_oig_session()
+        close_cna_session()
+        close_adverse_session()
+
+    employee_results = [employee]
+
+    merge_pdfs(oig_paths, os.path.join(oig_folder, "OIG_Merged.pdf"))
+    merge_pdfs(cna_paths, os.path.join(cna_folder, "CNA_Merged.pdf"))
+    merge_pdfs(adverse_paths, os.path.join(adverse_folder, "Adverse_Actions_Merged.pdf"))
+
+    results_excel_path = os.path.join(run_folder, "Single_Person_Results.xlsx")
+    create_results_excel(employee_results, results_excel_path, mode="combined")
+
+    zip_path = os.path.join(run_folder, "Single_Person_Check.zip")
+    build_zip(
+        run_folder,
+        zip_path,
+        include_folders=["OIG_Report", "CNA_Report", "Adverse_Actions_Report"],
+        excel_filename="Single_Person_Results.xlsx"
+    )
+
+    return employee_results
+
+
 def make_response(run_id, employee_results):
     total = len(employee_results)
     flagged = sum(1 for e in employee_results if e["flagged"])
@@ -672,6 +789,43 @@ def run_checks():
                 os.remove(upload_path)
             except Exception:
                 pass
+
+
+@app.route("/api/run-single", methods=["POST"])
+def run_single_person():
+    auth_error = require_api_key()
+    if auth_error:
+        return auth_error
+
+    cleanup_old_runs(RUNS_FOLDER)
+    cleanup_old_uploads(UPLOAD_FOLDER)
+
+    data = request.get_json(silent=True) or request.form
+
+    first = safe_text(data.get("first_name") or data.get("First Name"))
+    last = safe_text(data.get("last_name") or data.get("Last Name"))
+    ssn = clean_ssn(data.get("ssn") or data.get("SSN"))
+
+    if not first:
+        return jsonify({"error": "First name is required"}), 400
+
+    if not last:
+        return jsonify({"error": "Last name is required"}), 400
+
+    if not ssn:
+        return jsonify({"error": "SSN is required"}), 400
+
+    run_id = generate_run_id()
+    run_folder = os.path.join(RUNS_FOLDER, run_id)
+    os.makedirs(run_folder, exist_ok=True)
+
+    try:
+        employee_results = process_single_person_run(first, last, ssn, run_folder)
+        return make_response(run_id, employee_results)
+    except Exception:
+        if os.path.exists(run_folder):
+            shutil.rmtree(run_folder, ignore_errors=True)
+        return jsonify({"error": "Processing failed"}), 500
 
 
 @app.route("/api/run-oig", methods=["POST"])
