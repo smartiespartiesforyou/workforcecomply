@@ -328,7 +328,7 @@ body { font-family: 'Inter', sans-serif; }
             <div id="downloadBox" class="hidden rounded-2xl border border-blue-200 bg-blue-50 p-4">
                 <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                     <div>
-                        <p class="font-semibold text-slate-900">ZIP package ready</p>
+                        <p class="font-semibold text-slate-900">Report ready</p>
                         <p class="text-sm text-slate-600">
                             Your download should start automatically. If it does not, use the button.
                         </p>
@@ -564,6 +564,34 @@ async function downloadZipFile(url, buttonLabel) {
     zipLink.innerText = buttonLabel;
 }
 
+async function downloadFile(url, buttonLabel, fallbackFileName) {
+    const response = await fetch(url, {
+        method: "GET",
+        headers: {
+            "x-api-key": API_KEY
+        }
+    });
+
+    if (!response.ok) {
+        const data = await parseJsonSafely(response);
+        throw new Error(data.error || "Download failed");
+    }
+
+    const blob = await response.blob();
+    const tempLink = document.createElement("a");
+    const objectUrl = window.URL.createObjectURL(blob);
+
+    tempLink.href = objectUrl;
+    tempLink.download = fallbackFileName;
+    tempLink.style.display = "none";
+    document.body.appendChild(tempLink);
+    tempLink.click();
+    document.body.removeChild(tempLink);
+
+    window.URL.revokeObjectURL(objectUrl);
+    zipLink.innerText = buttonLabel;
+}
+
 async function runChecks(type) {
     if (selectedState !== "LA") {
         alert("This page only runs Louisiana checks.");
@@ -708,10 +736,10 @@ async function runSinglePersonCheck() {
         runtimeEl.innerText = seconds + " sec";
         issuesLabel.innerText = "Single Check Issues";
 
-        latestZipUrl = data.downloads.zip_url;
-        zipLink.innerText = "Download Single Person Report";
+        latestZipUrl = data.downloads.pdf_url || data.downloads.zip_url;
+        zipLink.innerText = "Download Single Person PDF";
 
-        await downloadZipFile(latestZipUrl, "Download Single Person Report");
+        await downloadFile(latestZipUrl, "Download Single Person PDF", "single-person-check.pdf");
 
     } catch (error) {
         statusEl.innerText = "Error: " + error.message;
@@ -729,7 +757,8 @@ zipLink.addEventListener("click", async function () {
         setButtonsDisabled(true);
         statusCard.classList.remove("hidden");
         statusEl.innerText = "Downloading ZIP...";
-        await downloadZipFile(latestZipUrl, zipLink.innerText);
+        const fallbackName = latestZipUrl.includes("single-pdf") ? "single-person-check.pdf" : "workforcecomply-report.zip";
+        await downloadFile(latestZipUrl, zipLink.innerText, fallbackName);
         statusEl.innerText = "Complete";
     } catch (error) {
         statusEl.innerText = "Error: " + error.message;
