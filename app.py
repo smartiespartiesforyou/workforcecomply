@@ -870,10 +870,13 @@ def make_response(run_id, employee_results, single_pdf=False):
 
 def get_dsw_batch_ranges():
     return [
-        {"id": "A-D", "label": "A-D", "start": "A", "end": "D"},
-        {"id": "E-H", "label": "E-H", "start": "E", "end": "H"},
-        {"id": "I-P", "label": "I-P", "start": "I", "end": "P"},
-        {"id": "Q-Z", "label": "Q-Z", "start": "Q", "end": "Z"},
+        {"id": "A-C", "label": "A-C", "start": "A", "end": "C"},
+        {"id": "D-F", "label": "D-F", "start": "D", "end": "F"},
+        {"id": "G-J", "label": "G-J", "start": "G", "end": "J"},
+        {"id": "K-M", "label": "K-M", "start": "K", "end": "M"},
+        {"id": "N-Q", "label": "N-Q", "start": "N", "end": "Q"},
+        {"id": "R-T", "label": "R-T", "start": "R", "end": "T"},
+        {"id": "U-Z", "label": "U-Z", "start": "U", "end": "Z"},
     ]
 
 
