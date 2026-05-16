@@ -341,6 +341,16 @@ body { font-family: 'Inter', sans-serif; }
                 </div>
             </div>
 
+            <div id="batchResultsBox" class="hidden rounded-2xl border border-slate-200 bg-white p-4 mt-5">
+                <div class="mb-3">
+                    <p class="font-semibold text-slate-900">DSW batch downloads</p>
+                    <p class="text-sm text-slate-600">
+                        Each section runs separately. Download each ZIP when it is complete.
+                    </p>
+                </div>
+                <div id="batchResultsList" class="space-y-3"></div>
+            </div>
+
         </div>
 
         <div id="otherStateBox" class="hidden soft-card p-6 md:p-8">
@@ -391,6 +401,8 @@ const statusCard = document.getElementById("statusCard");
 const statusEl = document.getElementById("status");
 const summary = document.getElementById("summary");
 const downloadBox = document.getElementById("downloadBox");
+const batchResultsBox = document.getElementById("batchResultsBox");
+const batchResultsList = document.getElementById("batchResultsList");
 
 const totalEl = document.getElementById("total");
 const clearEl = document.getElementById("clear");
@@ -487,6 +499,8 @@ function resetView() {
     statusCard.classList.add("hidden");
     summary.classList.add("hidden");
     downloadBox.classList.add("hidden");
+    if (batchResultsBox) batchResultsBox.classList.add("hidden");
+    if (batchResultsList) batchResultsList.innerHTML = "";
     statusEl.innerText = "";
     zipLink.innerText = "Download ZIP";
     latestZipUrl = "";
@@ -629,7 +643,192 @@ async function downloadFile(url, buttonLabel, fallbackFileName) {
     zipLink.innerText = buttonLabel;
 }
 
+
+function renderBatchRow(batch, status, zipUrl) {
+    if (!batchResultsBox || !batchResultsList) {
+        return;
+    }
+
+    batchResultsBox.classList.remove("hidden");
+
+    const rowId = "batch-row-" + batch.id.replace(/[^A-Za-z0-9]/g, "-");
+    let row = document.getElementById(rowId);
+
+    if (!row) {
+        row = document.createElement("div");
+        row.id = rowId;
+        row.className = "border border-slate-200 rounded-xl p-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3";
+        batchResultsList.appendChild(row);
+    }
+
+    const countText = batch.count ? `${batch.count} employee(s)` : "";
+    let statusClass = "text-slate-600";
+    if (status === "Complete") statusClass = "text-emerald-700";
+    if (status === "Running") statusClass = "text-blue-700";
+    if (status === "Failed") statusClass = "text-red-700";
+
+    row.innerHTML = `
+        <div>
+            <div class="font-semibold text-slate-900">DSW Batch ${batch.label}</div>
+            <div class="text-sm ${statusClass}">${status} ${countText ? "— " + countText : ""}</div>
+        </div>
+        <div>
+            ${
+                zipUrl
+                ? `<button type="button" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-semibold text-sm" data-url="${zipUrl}" data-label="DSW Batch ${batch.label}">Download ZIP</button>`
+                : `<span class="text-sm text-slate-400">Waiting</span>`
+            }
+        </div>
+    `;
+
+    const button = row.querySelector("button[data-url]");
+    if (button) {
+        button.addEventListener("click", async function () {
+            try {
+                statusCard.classList.remove("hidden");
+                statusEl.innerText = `Downloading DSW Batch ${batch.label}...`;
+                await downloadFile(
+                    button.getAttribute("data-url"),
+                    `Download DSW Batch ${batch.label}`,
+                    `DSW_Report_${batch.label}.zip`
+                );
+                statusEl.innerText = "Download complete";
+            } catch (error) {
+                statusEl.innerText = "Error: " + error.message;
+            }
+        });
+    }
+}
+
+
+async function runDswBatched() {
+    if (selectedState !== "LA") {
+        alert("This page only runs Louisiana checks.");
+        return;
+    }
+
+    const file = fileInput.files[0];
+
+    if (!file) {
+        alert("Upload file first");
+        return;
+    }
+
+    const lowerName = (file.name || "").toLowerCase();
+    if (!lowerName.endsWith(".xlsx") && !lowerName.endsWith(".xls")) {
+        alert("Only Excel files (.xlsx or .xls) are allowed.");
+        return;
+    }
+
+    resetView();
+    setButtonsDisabled(true);
+
+    statusCard.classList.remove("hidden");
+    statusEl.innerText = "Preparing DSW batches from uploaded Excel file...";
+
+    const start = performance.now();
+
+    try {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("state", selectedState);
+
+        const initRes = await fetch(BACKEND_BASE_URL + "/api/run-adverse-batched-init", {
+            method: "POST",
+            headers: {
+                "x-api-key": API_KEY
+            },
+            body: formData
+        });
+
+        const initData = await parseJsonSafely(initRes);
+
+        if (!initRes.ok) {
+            throw new Error(initData.error || "DSW batch setup failed");
+        }
+
+        const runId = initData.run_id;
+        const batches = initData.batches || [];
+
+        if (!batches.length) {
+            throw new Error("No DSW batches were created");
+        }
+
+        batchResultsBox.classList.remove("hidden");
+        batches.forEach(batch => renderBatchRow(batch, "Waiting", ""));
+
+        let totalEmployees = 0;
+        let totalClear = 0;
+        let totalFlagged = 0;
+
+        for (const batch of batches) {
+            statusEl.innerText = `Running DSW Batch ${batch.label} (${batch.count} employee(s))...`;
+            renderBatchRow(batch, "Running", "");
+
+            const batchRes = await fetch(
+                BACKEND_BASE_URL + `/api/run-adverse-batch/${runId}/${encodeURIComponent(batch.id)}`,
+                {
+                    method: "POST",
+                    headers: {
+                        "x-api-key": API_KEY
+                    }
+                }
+            );
+
+            const batchData = await parseJsonSafely(batchRes);
+
+            if (!batchRes.ok) {
+                renderBatchRow(batch, "Failed", "");
+                throw new Error(batchData.error || `DSW Batch ${batch.label} failed`);
+            }
+
+            totalEmployees += batchData.batch.total_employees;
+            totalClear += batchData.batch.clear_count;
+            totalFlagged += batchData.batch.attention_needed;
+
+            const zipUrl = batchData.downloads.zip_url;
+            renderBatchRow(batch, "Complete", zipUrl);
+
+            try {
+                await downloadFile(
+                    zipUrl,
+                    `Download DSW Batch ${batch.label}`,
+                    `DSW_Report_${batch.label}.zip`
+                );
+            } catch (_downloadError) {
+                // If browser blocks multiple automatic downloads, the button remains available.
+            }
+        }
+
+        const end = performance.now();
+        const seconds = ((end - start) / 1000).toFixed(1);
+
+        stopProgressMessages();
+        statusEl.innerText = "DSW batches complete";
+        summary.classList.remove("hidden");
+
+        totalEl.innerText = totalEmployees;
+        clearEl.innerText = totalClear;
+        flaggedEl.innerText = totalFlagged;
+        runtimeEl.innerText = seconds + " sec";
+        issuesLabel.innerText = "DSW Issues";
+
+    } catch (error) {
+        stopProgressMessages();
+        statusEl.innerText = "Error: " + error.message;
+    } finally {
+        stopProgressMessages();
+        setButtonsDisabled(false);
+    }
+}
+
+
 async function runChecks(type) {
+    if (type === "adverse") {
+        await runDswBatched();
+        return;
+    }
+
     if (selectedState !== "LA") {
         alert("This page only runs Louisiana checks.");
         return;
