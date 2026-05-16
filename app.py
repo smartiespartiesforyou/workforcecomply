@@ -1231,11 +1231,94 @@ def download_all_dsw_zips(parent_run_id):
     if not os.path.exists(parent_folder):
         return jsonify({"error": "Run folder not found"}), 404
 
-    master_zip_path = os.path.join(parent_folder, "All_DSW_Batch_Reports.zip")
+    master_folder = os.path.join(parent_folder, "MASTER_DSW_FINAL")
+    master_pdf_folder = os.path.join(master_folder, "All_DSW_Proof_PDFs")
+    os.makedirs(master_folder, exist_ok=True)
+    os.makedirs(master_pdf_folder, exist_ok=True)
+
+    result_frames = []
+    merged_pdf_paths = []
+
+    for batch_name in sorted(os.listdir(parent_folder)):
+        batch_folder = os.path.join(parent_folder, batch_name)
+
+        if not os.path.isdir(batch_folder):
+            continue
+
+        results_path = os.path.join(batch_folder, "DSW_Results.xlsx")
+        if os.path.exists(results_path):
+            try:
+                batch_results = pd.read_excel(results_path, dtype=str)
+                batch_results.insert(0, "Batch", batch_name)
+                result_frames.append(batch_results)
+            except Exception:
+                pass
+
+        adverse_folder = os.path.join(batch_folder, "Adverse_Actions_Report")
+        if not os.path.exists(adverse_folder):
+            continue
+
+        for root, dirs, files in os.walk(adverse_folder):
+            for file_name in files:
+                if not file_name.lower().endswith(".pdf"):
+                    continue
+
+                source_pdf = os.path.join(root, file_name)
+
+                if file_name == "Adverse_Actions_Merged.pdf":
+                    merged_pdf_paths.append(source_pdf)
+
+                safe_batch = re.sub(r"[^A-Za-z0-9_-]+", "_", batch_name)
+                destination_name = f"{safe_batch}_{file_name}"
+                destination_pdf = os.path.join(master_pdf_folder, destination_name)
+
+                try:
+                    shutil.copy2(source_pdf, destination_pdf)
+                except Exception:
+                    pass
+
+    master_results_path = os.path.join(master_folder, "MASTER_DSW_RESULTS.xlsx")
+
+    if result_frames:
+        master_results_df = pd.concat(result_frames, ignore_index=True)
+    else:
+        master_results_df = pd.DataFrame(columns=[
+            "Batch",
+            "First Name",
+            "Last Name",
+            "SSN",
+            "DSW Result",
+            "Issue Details",
+            "Status"
+        ])
+
+    master_results_df.to_excel(master_results_path, index=False)
+
+    all_merged_pdf_path = os.path.join(master_folder, "MASTER_DSW_MERGED_PROOF.pdf")
+    copied_pdfs = []
+
+    for root, dirs, files in os.walk(master_pdf_folder):
+        for file_name in files:
+            if file_name.lower().endswith(".pdf"):
+                copied_pdfs.append(os.path.join(root, file_name))
+
+    merge_pdfs(copied_pdfs, all_merged_pdf_path)
+
+    master_zip_path = os.path.join(parent_folder, "All_DSW_Results.zip")
 
     with zipfile.ZipFile(master_zip_path, "w", zipfile.ZIP_DEFLATED) as master_zip:
-        found_any = False
+        master_zip.write(master_results_path, "MASTER_DSW_RESULTS.xlsx")
 
+        if os.path.exists(all_merged_pdf_path):
+            master_zip.write(all_merged_pdf_path, "MASTER_DSW_MERGED_PROOF.pdf")
+
+        for root, dirs, files in os.walk(master_pdf_folder):
+            for file_name in files:
+                full_path = os.path.join(root, file_name)
+                relative_path = os.path.relpath(full_path, master_folder)
+                master_zip.write(full_path, relative_path)
+
+        # Keep the original batch ZIPs inside the final ZIP too.
         for batch_name in sorted(os.listdir(parent_folder)):
             batch_folder = os.path.join(parent_folder, batch_name)
 
@@ -1244,20 +1327,16 @@ def download_all_dsw_zips(parent_run_id):
 
             for file_name in os.listdir(batch_folder):
                 if file_name.endswith(".zip"):
-                    found_any = True
                     batch_zip_path = os.path.join(batch_folder, file_name)
                     master_zip.write(
                         batch_zip_path,
-                        os.path.join(batch_name, file_name)
+                        os.path.join("Original_Batch_ZIPs", batch_name, file_name)
                     )
-
-        if not found_any:
-            return jsonify({"error": "No completed DSW batch ZIPs found"}), 404
 
     return send_file(
         master_zip_path,
         as_attachment=True,
-        download_name="All_DSW_Batch_Reports.zip"
+        download_name="All_DSW_Results.zip"
     )
 
 
