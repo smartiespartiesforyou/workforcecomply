@@ -590,30 +590,6 @@ def dsw_csv_possible_match(first, last, ssn, dsw_df):
 
 
 
-def split_adverse_dataframe(df):
-    df = df.copy()
-
-    df["_LAST_INITIAL"] = (
-        df["Last Name"]
-        .fillna("")
-        .astype(str)
-        .str.strip()
-        .str.upper()
-        .str[:1]
-    )
-
-    batch_ag = df[df["_LAST_INITIAL"].between("A", "G", inclusive="both")]
-    batch_hm = df[df["_LAST_INITIAL"].between("H", "M", inclusive="both")]
-    batch_nz = df[df["_LAST_INITIAL"].between("N", "Z", inclusive="both")]
-
-    batches = [
-        ("A-G", batch_ag.drop(columns=["_LAST_INITIAL"], errors="ignore")),
-        ("H-M", batch_hm.drop(columns=["_LAST_INITIAL"], errors="ignore")),
-        ("N-Z", batch_nz.drop(columns=["_LAST_INITIAL"], errors="ignore"))
-    ]
-
-    return [(name, batch) for name, batch in batches if not batch.empty]
-
 
 def process_adverse_only_run(df, run_folder):
     adverse_folder = os.path.join(run_folder, "Adverse_Actions_Report")
@@ -630,7 +606,7 @@ def process_adverse_only_run(df, run_folder):
         print(f"DSW CSV downloaded successfully with {len(dsw_df)} rows. Live LDH proof PDFs will still be captured for each employee.")
 
     # This function now receives an already-small batch from the frontend workflow.
-    # Do NOT split again by A-G / H-M / N-Z here.
+    # Do NOT split again inside this already-small DSW batch.
     rows = [row for _, row in df.iterrows()]
     print(f"Starting DSW official proof batch with {len(rows)} employee(s)")
 
