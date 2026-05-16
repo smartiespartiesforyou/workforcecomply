@@ -629,83 +629,75 @@ def process_adverse_only_run(df, run_folder):
     else:
         print(f"DSW CSV downloaded successfully with {len(dsw_df)} rows. Live LDH proof PDFs will still be captured for each employee.")
 
-    # DSW/adverse proof requirement:
-    # Even when CSV pre-screening is available, every valid employee still gets
-    # a real LDH adverse actions page PDF from capture_adverse().
-    batches = split_adverse_dataframe(df)
+    # This function now receives an already-small batch from the frontend workflow.
+    # Do NOT split again by A-G / H-M / N-Z here.
+    rows = [row for _, row in df.iterrows()]
+    print(f"Starting DSW official proof batch with {len(rows)} employee(s)")
 
-    for batch_name, batch_df in batches:
-        print(f"Starting DSW official proof batch: {batch_name}")
+    def process_one_row(row):
+        first = safe_text(row["First Name"])
+        last = safe_text(row["Last Name"])
+        ssn_raw = row["SSN"]
+        ssn = clean_ssn(ssn_raw)
 
-        def process_one_row(row):
-            first = safe_text(row["First Name"])
-            last = safe_text(row["Last Name"])
-            ssn_raw = row["SSN"]
-            ssn = clean_ssn(ssn_raw)
+        employee = {
+            "First Name": first,
+            "Last Name": last,
+            "SSN": ssn,
+            "issues": [],
+            "flagged": False
+        }
 
-            employee = {
-                "First Name": first,
-                "Last Name": last,
-                "SSN": ssn,
-                "issues": [],
-                "flagged": False
-            }
+        if len(ssn) != 9:
+            employee["issues"].append("ERROR - INVALID SSN FOR ADVERSE")
+        else:
+            csv_possible_match = False
+            csv_detail = ""
 
-            if len(ssn) != 9:
-                employee["issues"].append("ERROR - INVALID SSN FOR ADVERSE")
-            else:
-                csv_possible_match = False
-                csv_detail = ""
-
-                if dsw_df is not None and not dsw_df.empty:
-                    try:
-                        csv_possible_match, csv_detail = dsw_csv_possible_match(first, last, ssn, dsw_df)
-                    except Exception:
-                        csv_possible_match = False
-                        csv_detail = ""
-
+            if dsw_df is not None and not dsw_df.empty:
                 try:
-                    adverse_result = run_adverse_safe(first, last, ssn, adverse_folder)
-                    adverse_pdf = adverse_result.get("pdf_path")
-
-                    if adverse_pdf:
-                        adverse_paths.append(adverse_pdf)
-
-                    adverse_status = safe_text(
-                        adverse_result.get("adverse_result", adverse_result.get("status", ""))
-                    ).lower()
-
-                    if adverse_status in ("match", "found", "review_needed"):
-                        detail = safe_text(adverse_result.get("detail")) or csv_detail or "ADVERSE ACTION FOUND"
-                        employee["issues"].append(f"REVIEW NEEDED - ADVERSE: {detail}")
-                    elif adverse_status == "error":
-                        employee["issues"].append("REVIEW NEEDED - ADVERSE ERROR")
-                    elif not adverse_pdf:
-                        employee["issues"].append("REVIEW NEEDED - ADVERSE PROOF MISSING")
-                    elif csv_possible_match:
-                        employee["issues"].append(
-                            f"REVIEW NEEDED - CSV POSSIBLE MATCH NEEDS MANUAL REVIEW: {csv_detail}"
-                        )
-
+                    csv_possible_match, csv_detail = dsw_csv_possible_match(first, last, ssn, dsw_df)
                 except Exception:
+                    csv_possible_match = False
+                    csv_detail = ""
+
+            try:
+                adverse_result = run_adverse_safe(first, last, ssn, adverse_folder)
+                adverse_pdf = adverse_result.get("pdf_path")
+
+                if adverse_pdf:
+                    adverse_paths.append(adverse_pdf)
+
+                adverse_status = safe_text(
+                    adverse_result.get("adverse_result", adverse_result.get("status", ""))
+                ).lower()
+
+                if adverse_status in ("match", "found", "review_needed"):
+                    detail = safe_text(adverse_result.get("detail")) or csv_detail or "ADVERSE ACTION FOUND"
+                    employee["issues"].append(f"REVIEW NEEDED - ADVERSE: {detail}")
+                elif adverse_status == "error":
                     employee["issues"].append("REVIEW NEEDED - ADVERSE ERROR")
+                elif not adverse_pdf:
+                    employee["issues"].append("REVIEW NEEDED - ADVERSE PROOF MISSING")
+                elif csv_possible_match:
+                    employee["issues"].append(
+                        f"REVIEW NEEDED - CSV POSSIBLE MATCH NEEDS MANUAL REVIEW: {csv_detail}"
+                    )
 
-            if employee["issues"]:
-                employee["flagged"] = True
+            except Exception:
+                employee["issues"].append("REVIEW NEEDED - ADVERSE ERROR")
 
-            return employee
+        if employee["issues"]:
+            employee["flagged"] = True
 
-        try:
-            rows = [row for _, row in batch_df.iterrows()]
+        return employee
 
-            with ThreadPoolExecutor(max_workers=2) as executor:
-                batch_results = list(executor.map(process_one_row, rows))
+    try:
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            employee_results = list(executor.map(process_one_row, rows))
 
-            employee_results.extend(batch_results)
-
-        finally:
-            # This is the stability piece: reset the LDH browser session after each batch.
-            close_adverse_session()
+    finally:
+        close_adverse_session()
 
     merge_pdfs(adverse_paths, os.path.join(adverse_folder, "Adverse_Actions_Merged.pdf"))
 
@@ -869,7 +861,7 @@ def make_response(run_id, employee_results, single_pdf=False):
 
 
 def get_dsw_batch_size():
-    return 15
+    return 5
 
 
 def split_dataframe_for_dsw_batches(df):
