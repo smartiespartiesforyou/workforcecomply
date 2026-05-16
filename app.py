@@ -543,9 +543,24 @@ def download_dsw_csv(run_folder):
     csv_path = os.path.join(run_folder, "DSW_Source_Adverse_Actions_List.csv")
 
     try:
-        urllib.request.urlretrieve(DSW_CSV_URL, csv_path)
+        request = urllib.request.Request(
+            DSW_CSV_URL,
+            headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+                "Accept": "text/csv,application/csv,text/plain,*/*",
+                "Referer": "https://adverseactions.ldh.la.gov/SelSearch/SelSearch/Export"
+            }
+        )
+
+        with urllib.request.urlopen(request, timeout=60) as response:
+            csv_bytes = response.read()
+
+        with open(csv_path, "wb") as f:
+            f.write(csv_bytes)
+
         df = pd.read_csv(csv_path, dtype=str, keep_default_na=False)
         return df, csv_path, None
+
     except Exception as e:
         return None, None, str(e)
 
