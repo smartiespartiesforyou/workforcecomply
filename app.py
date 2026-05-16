@@ -868,48 +868,54 @@ def make_response(run_id, employee_results, single_pdf=False):
 
 
 
-def get_dsw_batch_ranges():
-    return [
-        {"id": "A-C", "label": "A-C", "start": "A", "end": "C"},
-        {"id": "D-F", "label": "D-F", "start": "D", "end": "F"},
-        {"id": "G-J", "label": "G-J", "start": "G", "end": "J"},
-        {"id": "K-M", "label": "K-M", "start": "K", "end": "M"},
-        {"id": "N-Q", "label": "N-Q", "start": "N", "end": "Q"},
-        {"id": "R-T", "label": "R-T", "start": "R", "end": "T"},
-        {"id": "U-Z", "label": "U-Z", "start": "U", "end": "Z"},
-    ]
+def get_dsw_batch_size():
+    return 15
 
 
 def split_dataframe_for_dsw_batches(df):
     df = df.copy()
-    df["_LAST_INITIAL"] = (
+
+    df["_LAST_NAME_SORT"] = (
         df["Last Name"]
         .fillna("")
         .astype(str)
         .str.strip()
         .str.upper()
-        .str[:1]
     )
 
-    batches = []
-    for batch in get_dsw_batch_ranges():
-        batch_df = df[
-            df["_LAST_INITIAL"].between(
-                batch["start"],
-                batch["end"],
-                inclusive="both"
-            )
-        ].drop(columns=["_LAST_INITIAL"], errors="ignore")
+    df["_FIRST_NAME_SORT"] = (
+        df["First Name"]
+        .fillna("")
+        .astype(str)
+        .str.strip()
+        .str.upper()
+    )
 
-        if not batch_df.empty:
-            batches.append({
-                "id": batch["id"],
-                "label": batch["label"],
-                "count": int(len(batch_df)),
-                "df": batch_df
-            })
+    df = df.sort_values(by=["_LAST_NAME_SORT", "_FIRST_NAME_SORT"])
+
+    clean_df = df.drop(
+        columns=["_LAST_NAME_SORT", "_FIRST_NAME_SORT"],
+        errors="ignore"
+    ).reset_index(drop=True)
+
+    batch_size = get_dsw_batch_size()
+    batches = []
+
+    for start_index in range(0, len(clean_df), batch_size):
+        batch_df = clean_df.iloc[start_index:start_index + batch_size].copy()
+        batch_number = len(batches) + 1
+        batch_id = f"batch-{batch_number:03d}"
+        label = f"Batch {batch_number}"
+
+        batches.append({
+            "id": batch_id,
+            "label": label,
+            "count": int(len(batch_df)),
+            "df": batch_df
+        })
 
     return batches
+
 
 
 def make_batch_response(parent_run_id, batch_id, employee_results):
@@ -1195,8 +1201,7 @@ def run_adverse_batch(parent_run_id, batch_id):
     if auth_error:
         return auth_error
 
-    allowed_batch_ids = {b["id"] for b in get_dsw_batch_ranges()}
-    if batch_id not in allowed_batch_ids:
+    if not re.fullmatch(r"batch-\d{3}", batch_id or ""):
         return jsonify({"error": "Invalid batch"}), 400
 
     parent_folder = os.path.join(RUNS_FOLDER, parent_run_id)
