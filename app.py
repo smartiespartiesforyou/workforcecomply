@@ -589,52 +589,6 @@ def dsw_csv_possible_match(first, last, ssn, dsw_df):
     return False, ""
 
 
-def create_dsw_csv_clear_report(employee_row, output_path, csv_path):
-    doc = SimpleDocTemplate(
-        output_path,
-        pagesize=letter,
-        rightMargin=36,
-        leftMargin=36,
-        topMargin=36,
-        bottomMargin=36
-    )
-
-    styles = getSampleStyleSheet()
-    story = []
-
-    first = safe_text(employee_row.get("First Name", ""))
-    last = safe_text(employee_row.get("Last Name", ""))
-
-    story.append(Paragraph("WorkforceComply DSW / Adverse Actions Verification", styles["Title"]))
-    story.append(Spacer(1, 14))
-
-    story.append(Paragraph(
-        "This employee was checked against the Louisiana State Adverse Actions / Exclusions CSV downloaded from the LDH adverse actions export page for this run.",
-        styles["BodyText"]
-    ))
-    story.append(Spacer(1, 12))
-
-    story.append(Paragraph(f"<b>Employee First Name:</b> {first}", styles["BodyText"]))
-    story.append(Paragraph(f"<b>Employee Last Name:</b> {last}", styles["BodyText"]))
-    story.append(Paragraph(f"<b>Run date/time:</b> {datetime.now().strftime('%Y-%m-%d %I:%M %p')}", styles["BodyText"]))
-    story.append(Paragraph(f"<b>Source file:</b> {os.path.basename(csv_path) if csv_path else 'LDH CSV download'}", styles["BodyText"]))
-    story.append(Spacer(1, 16))
-
-    story.append(Paragraph(
-        "<b>Result:</b> No matching record found by employee name in downloaded Louisiana DSW / Adverse Actions CSV.",
-        styles["BodyText"]
-    ))
-
-    story.append(Spacer(1, 18))
-
-    story.append(Paragraph(
-        "This report was generated automatically by WorkforceComply.",
-        styles["Italic"]
-    ))
-
-    doc.build(story)
-    return output_path
-
 
 def split_adverse_dataframe(df):
     df = df.copy()
@@ -667,66 +621,27 @@ def process_adverse_only_run(df, run_folder):
 
     employee_results = []
     adverse_paths = []
-    clear_rows = []
 
     dsw_df, csv_path, csv_error = download_dsw_csv(run_folder)
 
     if csv_error or dsw_df is None:
-        print(f"DSW CSV download failed. Falling back to live browser checks. Error: {csv_error}")
-        batches = split_adverse_dataframe(df)
+        print(f"DSW CSV download failed. Continuing with live LDH proof checks only. Error: {csv_error}")
     else:
-        print(f"DSW CSV downloaded successfully with {len(dsw_df)} rows.")
-        possible_match_rows = []
+        print(f"DSW CSV downloaded successfully with {len(dsw_df)} rows. Live LDH proof PDFs will still be captured for each employee.")
 
-        for _, row in df.iterrows():
-            first = safe_text(row["First Name"])
-            last = safe_text(row["Last Name"])
-            ssn_raw = row["SSN"]
-            ssn = clean_ssn(ssn_raw)
-
-            employee = {
-                "First Name": first,
-                "Last Name": last,
-                "SSN": ssn,
-                "issues": [],
-                "flagged": False
-            }
-
-            if len(ssn) != 9:
-                employee["issues"].append("ERROR - INVALID SSN FOR ADVERSE")
-                employee["flagged"] = True
-                employee_results.append(employee)
-                continue
-
-            possible_match, detail = dsw_csv_possible_match(first, last, ssn, dsw_df)
-
-            if possible_match:
-                row_copy = row.copy()
-                row_copy["_CSV_MATCH_DETAIL"] = detail
-                possible_match_rows.append(row_copy)
-            else:
-                employee_results.append(employee)
-                clear_rows.append({
-                    "First Name": first,
-                    "Last Name": last,
-                    "SSN": ssn
-                })
-
-        if possible_match_rows:
-            possible_df = pd.DataFrame(possible_match_rows)
-            batches = split_adverse_dataframe(possible_df)
-        else:
-            batches = []
+    # DSW/adverse proof requirement:
+    # Even when CSV pre-screening is available, every valid employee still gets
+    # a real LDH adverse actions page PDF from capture_adverse().
+    batches = split_adverse_dataframe(df)
 
     for batch_name, batch_df in batches:
-        print(f"Starting DSW live verification batch: {batch_name}")
+        print(f"Starting DSW official proof batch: {batch_name}")
 
         def process_one_row(row):
             first = safe_text(row["First Name"])
             last = safe_text(row["Last Name"])
             ssn_raw = row["SSN"]
             ssn = clean_ssn(ssn_raw)
-            csv_detail = safe_text(row.get("_CSV_MATCH_DETAIL", ""))
 
             employee = {
                 "First Name": first,
@@ -739,6 +654,16 @@ def process_adverse_only_run(df, run_folder):
             if len(ssn) != 9:
                 employee["issues"].append("ERROR - INVALID SSN FOR ADVERSE")
             else:
+                csv_possible_match = False
+                csv_detail = ""
+
+                if dsw_df is not None and not dsw_df.empty:
+                    try:
+                        csv_possible_match, csv_detail = dsw_csv_possible_match(first, last, ssn, dsw_df)
+                    except Exception:
+                        csv_possible_match = False
+                        csv_detail = ""
+
                 try:
                     adverse_result = run_adverse_safe(first, last, ssn, adverse_folder)
                     adverse_pdf = adverse_result.get("pdf_path")
@@ -757,8 +682,10 @@ def process_adverse_only_run(df, run_folder):
                         employee["issues"].append("REVIEW NEEDED - ADVERSE ERROR")
                     elif not adverse_pdf:
                         employee["issues"].append("REVIEW NEEDED - ADVERSE PROOF MISSING")
-                    elif csv_detail:
-                        employee["issues"].append(f"REVIEW NEEDED - CSV POSSIBLE MATCH VERIFIED CLEAR ON LIVE SITE: {csv_detail}")
+                    elif csv_possible_match:
+                        employee["issues"].append(
+                            f"REVIEW NEEDED - CSV POSSIBLE MATCH NEEDS MANUAL REVIEW: {csv_detail}"
+                        )
 
                 except Exception:
                     employee["issues"].append("REVIEW NEEDED - ADVERSE ERROR")
@@ -777,30 +704,8 @@ def process_adverse_only_run(df, run_folder):
             employee_results.extend(batch_results)
 
         finally:
+            # This is the stability piece: reset the LDH browser session after each batch.
             close_adverse_session()
-
-    if clear_rows:
-        for clear_row in clear_rows:
-            try:
-                safe_first = re.sub(r"[^A-Za-z0-9_-]+", "_", safe_text(clear_row.get("First Name", ""))).strip("_") or "First"
-                safe_last = re.sub(r"[^A-Za-z0-9_-]+", "_", safe_text(clear_row.get("Last Name", ""))).strip("_") or "Last"
-
-                clear_report_path = os.path.join(
-                    adverse_folder,
-                    f"DSW_Clear_{safe_first}_{safe_last}.pdf"
-                )
-
-                clear_pdf = create_dsw_csv_clear_report(
-                    clear_row,
-                    clear_report_path,
-                    csv_path
-                )
-
-                if clear_pdf:
-                    adverse_paths.append(clear_pdf)
-
-            except Exception as e:
-                print(f"Failed to create DSW CSV clear report: {e}")
 
     merge_pdfs(adverse_paths, os.path.join(adverse_folder, "Adverse_Actions_Merged.pdf"))
 
