@@ -345,7 +345,7 @@ body { font-family: 'Inter', sans-serif; }
                 <div class="mb-3">
                     <p class="font-semibold text-slate-900">DSW batch downloads</p>
                     <p class="text-sm text-slate-600">
-                        Each section runs separately. Download each ZIP when it is complete.
+                        Each batch runs separately. Download each ZIP when it is complete.
                     </p>
                 </div>
                 <div id="batchResultsList" class="space-y-3"></div>
@@ -724,7 +724,7 @@ async function runDswBatched() {
     setButtonsDisabled(true);
 
     statusCard.classList.remove("hidden");
-    statusEl.innerText = "Preparing DSW batches from uploaded Excel file...";
+    statusEl.innerText = "Splitting DSW into small batches from uploaded Excel file...";
 
     const start = performance.now();
 
