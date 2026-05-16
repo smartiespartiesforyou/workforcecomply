@@ -589,7 +589,7 @@ def dsw_csv_possible_match(first, last, ssn, dsw_df):
     return False, ""
 
 
-def create_dsw_csv_clear_report(clear_rows, output_path, csv_path):
+def create_dsw_csv_clear_report(employee_row, output_path, csv_path):
     doc = SimpleDocTemplate(
         output_path,
         pagesize=letter,
@@ -602,44 +602,35 @@ def create_dsw_csv_clear_report(clear_rows, output_path, csv_path):
     styles = getSampleStyleSheet()
     story = []
 
-    story.append(Paragraph("WorkforceComply DSW / Adverse Actions CSV Clear Report", styles["Title"]))
-    story.append(Spacer(1, 12))
+    first = safe_text(employee_row.get("First Name", ""))
+    last = safe_text(employee_row.get("Last Name", ""))
+
+    story.append(Paragraph("WorkforceComply DSW / Adverse Actions Verification", styles["Title"]))
+    story.append(Spacer(1, 14))
 
     story.append(Paragraph(
-        "This report documents employees checked against the Louisiana State Adverse Actions / Exclusions CSV downloaded from the LDH adverse actions export page for this run.",
+        "This employee was checked against the Louisiana State Adverse Actions / Exclusions CSV downloaded from the LDH adverse actions export page for this run.",
         styles["BodyText"]
     ))
-    story.append(Spacer(1, 8))
-
-    story.append(Paragraph(f"Run date/time: {datetime.now().strftime('%Y-%m-%d %I:%M %p')}", styles["BodyText"]))
-    story.append(Paragraph(f"Source file: {os.path.basename(csv_path) if csv_path else 'LDH CSV download'}", styles["BodyText"]))
     story.append(Spacer(1, 12))
 
-    if not clear_rows:
-        story.append(Paragraph("No CSV-cleared employees were recorded in this run.", styles["BodyText"]))
-    else:
-        data = [["First Name", "Last Name", "SSN Last 4", "DSW CSV Result"]]
+    story.append(Paragraph(f"<b>Employee First Name:</b> {first}", styles["BodyText"]))
+    story.append(Paragraph(f"<b>Employee Last Name:</b> {last}", styles["BodyText"]))
+    story.append(Paragraph(f"<b>Run date/time:</b> {datetime.now().strftime('%Y-%m-%d %I:%M %p')}", styles["BodyText"]))
+    story.append(Paragraph(f"<b>Source file:</b> {os.path.basename(csv_path) if csv_path else 'LDH CSV download'}", styles["BodyText"]))
+    story.append(Spacer(1, 16))
 
-        for row in clear_rows:
-            ssn = clean_ssn(row.get("SSN", ""))
-            last4 = ssn[-4:] if len(ssn) >= 4 else ""
-            data.append([
-                safe_text(row.get("First Name", "")),
-                safe_text(row.get("Last Name", "")),
-                last4,
-                "No match found in downloaded LDH CSV"
-            ])
+    story.append(Paragraph(
+        "<b>Result:</b> No matching record found by employee name in downloaded Louisiana DSW / Adverse Actions CSV.",
+        styles["BodyText"]
+    ))
 
-        table = Table(data, repeatRows=1, colWidths=[110, 110, 80, 210])
-        table.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
-            ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
-            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, -1), 8),
-            ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.whitesmoke]),
-        ]))
-        story.append(table)
+    story.append(Spacer(1, 18))
+
+    story.append(Paragraph(
+        "This report was generated automatically by WorkforceComply.",
+        styles["Italic"]
+    ))
 
     doc.build(story)
     return output_path
@@ -789,13 +780,27 @@ def process_adverse_only_run(df, run_folder):
             close_adverse_session()
 
     if clear_rows:
-        clear_report_path = os.path.join(adverse_folder, "DSW_CSV_Clear_Report.pdf")
-        try:
-            clear_pdf = create_dsw_csv_clear_report(clear_rows, clear_report_path, csv_path)
-            if clear_pdf:
-                adverse_paths.append(clear_pdf)
-        except Exception as e:
-            print(f"Failed to create DSW CSV clear report: {e}")
+        for clear_row in clear_rows:
+            try:
+                safe_first = re.sub(r"[^A-Za-z0-9_-]+", "_", safe_text(clear_row.get("First Name", ""))).strip("_") or "First"
+                safe_last = re.sub(r"[^A-Za-z0-9_-]+", "_", safe_text(clear_row.get("Last Name", ""))).strip("_") or "Last"
+
+                clear_report_path = os.path.join(
+                    adverse_folder,
+                    f"DSW_Clear_{safe_first}_{safe_last}.pdf"
+                )
+
+                clear_pdf = create_dsw_csv_clear_report(
+                    clear_row,
+                    clear_report_path,
+                    csv_path
+                )
+
+                if clear_pdf:
+                    adverse_paths.append(clear_pdf)
+
+            except Exception as e:
+                print(f"Failed to create DSW CSV clear report: {e}")
 
     merge_pdfs(adverse_paths, os.path.join(adverse_folder, "Adverse_Actions_Merged.pdf"))
 
