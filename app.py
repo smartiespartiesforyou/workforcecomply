@@ -1194,6 +1194,9 @@ def download_batch_zip(parent_run_id, batch_id):
     if auth_error:
         return auth_error
 
+    if not re.fullmatch(r"batch-\d{3}", batch_id or ""):
+        return jsonify({"error": "Invalid batch"}), 400
+
     parent_folder = os.path.join(RUNS_FOLDER, parent_run_id)
     batch_folder = os.path.join(parent_folder, batch_id)
     zip_path = None
@@ -1209,17 +1212,11 @@ def download_batch_zip(parent_run_id, batch_id):
     if not zip_path or not os.path.exists(zip_path):
         return jsonify({"error": "Batch ZIP file not found"}), 404
 
-    response = send_file(
+    return send_file(
         zip_path,
         as_attachment=True,
         download_name=f"DSW_Report_{batch_id}.zip"
     )
-
-    # Do not delete batch folders immediately after a single batch download.
-    # Other batches in the same run may still need their batch_input.xlsx files.
-    # The scheduled cleanup_old_runs() function removes the full run after the short retention window.
-    return response
-
 
 
 @app.route("/api/run-adverse", methods=["POST"])
