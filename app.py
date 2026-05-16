@@ -1219,6 +1219,49 @@ def download_batch_zip(parent_run_id, batch_id):
     )
 
 
+
+@app.route("/api/download/<parent_run_id>/all-dsw-zips", methods=["GET"])
+def download_all_dsw_zips(parent_run_id):
+    auth_error = require_api_key()
+    if auth_error:
+        return auth_error
+
+    parent_folder = os.path.join(RUNS_FOLDER, parent_run_id)
+
+    if not os.path.exists(parent_folder):
+        return jsonify({"error": "Run folder not found"}), 404
+
+    master_zip_path = os.path.join(parent_folder, "All_DSW_Batch_Reports.zip")
+
+    with zipfile.ZipFile(master_zip_path, "w", zipfile.ZIP_DEFLATED) as master_zip:
+        found_any = False
+
+        for batch_name in sorted(os.listdir(parent_folder)):
+            batch_folder = os.path.join(parent_folder, batch_name)
+
+            if not os.path.isdir(batch_folder):
+                continue
+
+            for file_name in os.listdir(batch_folder):
+                if file_name.endswith(".zip"):
+                    found_any = True
+                    batch_zip_path = os.path.join(batch_folder, file_name)
+                    master_zip.write(
+                        batch_zip_path,
+                        os.path.join(batch_name, file_name)
+                    )
+
+        if not found_any:
+            return jsonify({"error": "No completed DSW batch ZIPs found"}), 404
+
+    return send_file(
+        master_zip_path,
+        as_attachment=True,
+        download_name="All_DSW_Batch_Reports.zip"
+    )
+
+
+
 @app.route("/api/run-adverse", methods=["POST"])
 def run_adverse_only():
     auth_error = require_api_key()
