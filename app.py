@@ -698,28 +698,39 @@ def process_single_person_run(first, last, ssn, run_folder):
 
     employee_results = [employee]
 
-    merge_pdfs(oig_paths, os.path.join(oig_folder, "OIG_Merged.pdf"))
-    merge_pdfs(cna_paths, os.path.join(cna_folder, "CNA_Merged.pdf"))
-    merge_pdfs(adverse_paths, os.path.join(adverse_folder, "Adverse_Actions_Merged.pdf"))
+    oig_merged = merge_pdfs(oig_paths, os.path.join(oig_folder, "OIG_Merged.pdf"))
+    cna_merged = merge_pdfs(cna_paths, os.path.join(cna_folder, "CNA_Merged.pdf"))
+    adverse_merged = merge_pdfs(adverse_paths, os.path.join(adverse_folder, "Adverse_Actions_Merged.pdf"))
+
+    pdf_packet_paths = [p for p in [oig_merged, cna_merged, adverse_merged] if p]
+
+    safe_first = re.sub(r"[^A-Za-z0-9_-]+", "_", first).strip("_") or "First"
+    safe_last = re.sub(r"[^A-Za-z0-9_-]+", "_", last).strip("_") or "Last"
+
+    final_pdf_path = os.path.join(
+        run_folder,
+        f"Single_Person_Check_{safe_first}_{safe_last}.pdf"
+    )
+
+    merge_pdfs(pdf_packet_paths, final_pdf_path)
 
     results_excel_path = os.path.join(run_folder, "Single_Person_Results.xlsx")
     create_results_excel(employee_results, results_excel_path, mode="combined")
 
-    zip_path = os.path.join(run_folder, "Single_Person_Check.zip")
-    build_zip(
-        run_folder,
-        zip_path,
-        include_folders=["OIG_Report", "CNA_Report", "Adverse_Actions_Report"],
-        excel_filename="Single_Person_Results.xlsx"
-    )
-
     return employee_results
 
 
-def make_response(run_id, employee_results):
+def make_response(run_id, employee_results, single_pdf=False):
     total = len(employee_results)
     flagged = sum(1 for e in employee_results if e["flagged"])
     clear = total - flagged
+
+    downloads = {
+        "zip_url": f"{BACKEND_BASE_URL}/api/download/{run_id}/zip"
+    }
+
+    if single_pdf:
+        downloads["pdf_url"] = f"{BACKEND_BASE_URL}/api/download/{run_id}/single-pdf"
 
     return jsonify({
         "summary": {
@@ -727,9 +738,7 @@ def make_response(run_id, employee_results):
             "clear_count": clear,
             "attention_needed": flagged
         },
-        "downloads": {
-            "zip_url": f"{BACKEND_BASE_URL}/api/download/{run_id}/zip"
-        }
+        "downloads": downloads
     })
 
 
@@ -821,7 +830,7 @@ def run_single_person():
 
     try:
         employee_results = process_single_person_run(first, last, ssn, run_folder)
-        return make_response(run_id, employee_results)
+        return make_response(run_id, employee_results, single_pdf=True)
     except Exception:
         if os.path.exists(run_folder):
             shutil.rmtree(run_folder, ignore_errors=True)
@@ -955,6 +964,43 @@ def run_adverse_only():
                 os.remove(upload_path)
             except Exception:
                 pass
+
+
+@app.route("/api/download/<run_id>/single-pdf", methods=["GET"])
+def download_single_pdf(run_id):
+    auth_error = require_api_key()
+    if auth_error:
+        return auth_error
+
+    run_folder = os.path.join(RUNS_FOLDER, run_id)
+    pdf_path = None
+
+    if not os.path.exists(run_folder):
+        return jsonify({"error": "Run folder not found"}), 404
+
+    for f in os.listdir(run_folder):
+        if f.startswith("Single_Person_Check_") and f.endswith(".pdf"):
+            pdf_path = os.path.join(run_folder, f)
+            break
+
+    if not pdf_path or not os.path.exists(pdf_path):
+        return jsonify({"error": "PDF file not found"}), 404
+
+    response = send_file(
+        pdf_path,
+        as_attachment=True,
+        download_name=os.path.basename(pdf_path),
+        mimetype="application/pdf"
+    )
+
+    def cleanup():
+        try:
+            shutil.rmtree(run_folder)
+        except Exception:
+            pass
+
+    response.call_on_close(cleanup)
+    return response
 
 
 @app.route("/api/download/<run_id>/zip", methods=["GET"])
