@@ -1265,8 +1265,11 @@ def download_all_dsw_zips(parent_run_id):
 
                 source_pdf = os.path.join(root, file_name)
 
+                # Do NOT copy the already-merged batch PDF into the master proof folder.
+                # If we copy Adverse_Actions_Merged.pdf AND the individual employee PDFs,
+                # the final MASTER_DSW_MERGED_PROOF.pdf ends up duplicated.
                 if file_name == "Adverse_Actions_Merged.pdf":
-                    merged_pdf_paths.append(source_pdf)
+                    continue
 
                 safe_batch = re.sub(r"[^A-Za-z0-9_-]+", "_", batch_name)
                 destination_name = f"{safe_batch}_{file_name}"
